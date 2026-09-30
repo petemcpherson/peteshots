@@ -3,13 +3,15 @@
 //  peteshots
 //
 
+import KeyboardShortcuts
 import SwiftUI
 
 struct MenuContent: View {
     var body: some View {
         Button("Take Screenshot") {
-            // Connected to the capture flow in Phase 2.
+            CaptureCoordinator.shared.start()
         }
+        .globalKeyboardShortcut(.takeScreenshot)
 
         Button("Open Destination Folder") {
             NSWorkspace.shared.open(AppSettings.destinationURL)

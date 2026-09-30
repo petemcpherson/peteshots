@@ -5,7 +5,7 @@ Source: `context/spec.md` (final). This plan breaks the spec into 8 phases. Each
 ## Progress
 
 - [x] Phase 1 — Project setup and app shell
-- [ ] Phase 2 — Hotkey, permission, selection overlay, and capture
+- [x] Phase 2 — Hotkey, permission, selection overlay, and capture
 - [ ] Phase 3 — Editor foundation (window, document model, canvas, toolbar, undo)
 - [ ] Phase 4 — Arrow tool, blur tool, and color picker
 - [ ] Phase 5 — Text tool and crop tool
@@ -117,7 +117,7 @@ peteshots/
 
 ---
 
-## Phase 2 — Hotkey, permission, selection overlay, and capture
+## Phase 2 — Hotkey, permission, selection overlay, and capture [COMPLETED]
 
 **Goal:** Cmd-Shift-A shows the overlay on all displays. Drag and release captures the region into an in-memory `CGImage` (§4).
 
