@@ -20,3 +20,7 @@ The app asks for the Screen Recording permission the first time you take a scree
 ## Dependencies
 
 - [KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts) (Swift Package Manager)
+
+## License
+
+MIT. See [LICENSE](LICENSE).
