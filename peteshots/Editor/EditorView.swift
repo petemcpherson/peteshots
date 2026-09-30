@@ -45,6 +45,7 @@ struct EditorView: View {
                 .help("Discard (Esc)")
             Button("Save") { state.save() }
                 .buttonStyle(.borderedProminent)
+                .disabled(state.isSaving)
                 .help("Save (⌘S)")
         }
         .padding(.horizontal, 10)

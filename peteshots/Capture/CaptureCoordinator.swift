@@ -73,11 +73,11 @@ final class CaptureCoordinator {
     }
 
     private func showEditor(_ image: CGImage) {
-        guard let captureRect, let captureScreen else {
+        guard let captureRect, let captureScreen, let captureDate else {
             reset()
             return
         }
-        let controller = EditorWindowController(image: image, captureRect: captureRect, screen: captureScreen) { [weak self] in
+        let controller = EditorWindowController(image: image, captureRect: captureRect, captureDate: captureDate, screen: captureScreen) { [weak self] in
             self?.reset()
         }
         state = .editing(controller)

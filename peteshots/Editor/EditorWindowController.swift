@@ -4,6 +4,7 @@
 //
 
 import AppKit
+import OSLog
 import SwiftUI
 
 /// The editor window for one capture (spec §5.1). Closing it by any route
@@ -15,8 +16,9 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
     let state: EditorState
     private let editorUndoManager = UndoManager()
     private let onClose: () -> Void
+    private let logger = Logger(subsystem: "com.peteshots.peteshots", category: "export")
 
-    init(image: CGImage, captureRect: CGRect, screen: NSScreen, onClose: @escaping () -> Void) {
+    init(image: CGImage, captureRect: CGRect, captureDate: Date, screen: NSScreen, onClose: @escaping () -> Void) {
         self.onClose = onClose
 
         // Image size in points: a Retina capture shows at its on-screen size (spec §11).
@@ -47,9 +49,15 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
         window.keyHandler = { [weak state] event in state?.handleKey(event) ?? false }
 
         state.undoManager = editorUndoManager
-        state.onSave = { [weak self] in
-            // Phase 6 connects the export pipeline. For now, Save closes the editor.
+        state.captureDate = captureDate
+        state.onSaved = { [weak self] result in
+            // Phase 7 shows the toast.
+            self?.logger.info("Saved \(result.url.path, privacy: .public): \(Int(result.originalSize.width))×\(Int(result.originalSize.height)) → \(Int(result.finalSize.width))×\(Int(result.finalSize.height)), \(result.formattedOriginalBytes, privacy: .public) → \(result.formattedFinalBytes, privacy: .public), fallback: \(result.usedFallback)")
             self?.close()
+        }
+        state.onSaveFailed = { [weak self] error in
+            // Phase 7 shows the error toast. The editor stays open.
+            self?.logger.error("Save failed: \(error.localizedDescription, privacy: .public)")
         }
         state.onCancel = { [weak self] in self?.close() }
     }

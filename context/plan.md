@@ -9,7 +9,7 @@ Source: `context/spec.md` (final). This plan breaks the spec into 8 phases. Each
 - [x] Phase 3 — Editor foundation (window, document model, canvas, toolbar, undo)
 - [x] Phase 4 — Arrow tool, blur tool, and color picker
 - [x] Phase 5 — Text tool and crop tool
-- [ ] Phase 6 — Export pipeline (flatten, resize, encode, write, clipboard)
+- [x] Phase 6 — Export pipeline (flatten, resize, encode, write, clipboard)
 - [ ] Phase 7 — Toast notification and full Settings window
 - [ ] Phase 8 — Edge cases, polish, and acceptance testing
 
@@ -289,7 +289,7 @@ nonisolated enum Annotation: Equatable, Sendable, Identifiable {
 
 ---
 
-## Phase 6 — Export pipeline
+## Phase 6 — Export pipeline [COMPLETED]
 
 **Goal:** Cmd-S writes the final file with the correct name, size, format, and compression (§6, §7). The pipeline runs off the main thread.
 

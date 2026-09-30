@@ -71,8 +71,14 @@ final class EditorState {
     private(set) var cropDraft: CGRect?
     private(set) var colorHex: String
 
+    /// True while the export runs. Save is disabled until it ends.
+    private(set) var isSaving = false
+
     @ObservationIgnored var undoManager: UndoManager?
-    @ObservationIgnored var onSave: () -> Void = {}
+    /// The capture time, used for the file name (spec §7.4).
+    @ObservationIgnored var captureDate = Date()
+    @ObservationIgnored var onSaved: (ExportResult) -> Void = { _ in }
+    @ObservationIgnored var onSaveFailed: (Error) -> Void = { _ in }
     @ObservationIgnored var onCancel: () -> Void = {}
 
     /// The document when the current live drag started.
@@ -275,10 +281,33 @@ final class EditorState {
 
     // MARK: - Actions
 
+    /// Exports off the main thread, then copies to the clipboard (spec §6).
+    /// A failed write keeps the editor open with Save enabled again.
     func save() {
+        guard !isSaving else { return }
         endTextEditing()
         applyCrop()
-        onSave()
+        isSaving = true
+
+        let base = baseImage
+        let document = document
+        let captureDate = captureDate
+        let settings = ExportSettings.current()
+        Task {
+            let result = await Task.detached(priority: .userInitiated) {
+                Result { try ExportPipeline.export(base: base, document: document, captureDate: captureDate, settings: settings) }
+            }.value
+            isSaving = false
+            switch result {
+            case .success(let export):
+                if settings.copyToClipboard {
+                    ClipboardWriter.write(fileURL: export.url, data: export.data, format: export.format)
+                }
+                onSaved(export)
+            case .failure(let error):
+                onSaveFailed(error)
+            }
+        }
     }
 
     func cancel() { onCancel() }
