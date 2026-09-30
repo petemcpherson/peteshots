@@ -50,3 +50,14 @@ The AI Agent can give Pete (the dev) manual to-do items here (clear, CONCISE, st
   3. Open Peteshots Settings. The Launch at login status reads "Peteshots opens when you log in."
   4. Log out and back in. The menu bar icon appears.
 
+
+- [ ] **Phase 8 acceptance run (Release build in `/Applications`).**
+  Run the Phase 2–7 checks above on the `/Applications` copy, then these:
+  1. **Two displays** (if you have one): drag a selection across both. The editor shows the full region, sharp, at the right size.
+  2. **Full-screen app:** put Safari in full screen, press Cmd-Shift-A. The overlay shows on top of it.
+  3. **Big capture:** drag across a whole 5K/6K display. The editor opens fast. Add a big blur and drag it around: it stays smooth.
+  4. **Speed:** the overlay feels instant after the hotkey, and the editor opens right after mouse-up.
+  5. **Permission revoked:** System Settings → Privacy & Security → Screen & System Audio Recording → turn off Peteshots. Press Cmd-Shift-A: the explanation window shows, no overlay. Turn it back on and relaunch.
+  6. **Network:** in Terminal run `nettop -p $(pgrep -x peteshots)`, then do a full capture and save. No connections appear (or check with LuLu/Little Snitch).
+  7. **Metadata:** on a saved file run `mdls "<file>"`. No EXIF, GPS, or camera fields.
+  8. Tell the agent any item that fails, so it can fix it and update "Acceptance results" in `context/plan.md`.

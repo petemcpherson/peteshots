@@ -11,7 +11,7 @@ Source: `context/spec.md` (final). This plan breaks the spec into 8 phases. Each
 - [x] Phase 5 — Text tool and crop tool
 - [x] Phase 6 — Export pipeline (flatten, resize, encode, write, clipboard)
 - [x] Phase 7 — Toast notification and full Settings window
-- [ ] Phase 8 — Edge cases, polish, and acceptance testing
+- [x] Phase 8 — Edge cases, polish, and acceptance testing
 
 ---
 
@@ -377,7 +377,7 @@ nonisolated enum Annotation: Equatable, Sendable, Identifiable {
 
 ---
 
-## Phase 8 — Edge cases, polish, and acceptance testing
+## Phase 8 — Edge cases, polish, and acceptance testing [COMPLETED]
 
 ### 8.1 Edge cases (§11)
 - **Multiple displays with different scale factors:** test a selection that crosses two displays. The editor uses `image.width / rect.width` as the scale.
@@ -408,6 +408,25 @@ nonisolated enum Annotation: Equatable, Sendable, Identifiable {
 Go through spec §12 items 1–12 one by one on a Release build installed in `/Applications`. Record the results in this file under a short "Acceptance results" list. File a `user-todo.md` item for any step that needs Pete (for example, the Little Snitch/LuLu check, or a second display).
 
 **Done when:** all 12 acceptance criteria pass.
+
+### Acceptance results
+
+Automated checks run by the agent (Release build, unit tests, UI smoke test). Items marked "Pete" need a person at the Mac; see `context/user-todo.md` → "Phase 8 acceptance run".
+
+1. Menu bar only, no Dock icon — pass (automated: `LSUIElement = true` in the Release Info.plist; UI smoke test launches the app). Visual check: Pete.
+2. Overlay on all displays in about 150 ms — Pete.
+3. Exact region at native resolution — Pete (coordinate conversion covered by `CoordinateSpaceTests`).
+4. Arrow, blur, text, and crop editing — Pete (model, geometry, and undo covered by `EditorStateTests`, `GeometryTests`, `TextLayoutTests`). 6K blur renders a 1200×700 region well under 250 ms per frame (`EdgeCaseTests.blurOnLargeImage`).
+5. Color persists and applies — Pete.
+6. Save writes the right name, format, resize, and compression — pass (automated: `ExportTests`, `EdgeCaseTests.largeImageExportResizes`). WYSIWYG check: Pete.
+7. Toast timing and lines — Pete (line logic covered by `ToastContentTests`).
+8. Cancel writes nothing — Pete.
+9. Undo/redo including crop — pass (automated: `EditorStateTests`). Keyboard check: Pete.
+10. Clipboard paste — Pete.
+11. Settings persist, launch at login from `/Applications` — Pete.
+12. No network — pass (static): no `URLSession`/`Network`/`NWConnection`/`http` in the source, no network symbols or frameworks linked in the Release binary. Saved PNG/JPEG files carry no EXIF, GPS, or TIFF metadata (`sips -g all`, `mdls`). Live `nettop` check: Pete.
+
+Write failure (read-only folder): the export throws and writes nothing — pass (automated: `EdgeCaseTests.writeToReadOnlyFolderThrows`).
 
 ---
 

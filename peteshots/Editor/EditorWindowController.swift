@@ -55,7 +55,6 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
         state.onSaved = { [weak self] result in
             guard let self else { return }
             ToastPresenter.shared.show(.saved(result), on: captureScreen)
-            logger.info("Saved \(result.url.path, privacy: .public): \(Int(result.originalSize.width))×\(Int(result.originalSize.height)) → \(Int(result.finalSize.width))×\(Int(result.finalSize.height)), \(result.formattedOriginalBytes, privacy: .public) → \(result.formattedFinalBytes, privacy: .public), fallback: \(result.usedFallback)")
             close()
         }
         state.onSaveFailed = { [weak self] error in
