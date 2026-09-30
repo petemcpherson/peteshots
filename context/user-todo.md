@@ -1,0 +1,1 @@
+The AI Agent can give Pete (the dev) manual to-do items here (clear, CONCISE, step by step instructions as well). 
