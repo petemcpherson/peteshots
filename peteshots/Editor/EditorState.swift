@@ -58,13 +58,17 @@ final class EditorState {
     }
 
     var tool: Tool = .select {
-        didSet { if tool != .select { selectedID = nil } }
+        didSet { toolDidChange(from: oldValue) }
     }
 
     var selectedID: Annotation.ID? {
         didSet { if selectedID != oldValue { colorChange = nil } }
     }
-    var editingTextID: Annotation.ID?
+    /// The text annotation in the inline editor. Its string updates live, and
+    /// the whole edit becomes one undo step when editing ends (spec §5.6).
+    private(set) var editingTextID: Annotation.ID?
+    /// The crop rect being adjusted while the crop tool is active (spec §5.7).
+    private(set) var cropDraft: CGRect?
     private(set) var colorHex: String
 
     @ObservationIgnored var undoManager: UndoManager?
@@ -81,6 +85,8 @@ final class EditorState {
     static let colorCoalesceInterval: TimeInterval = 1
     /// The smallest blur region, in image px (spec §5.5).
     static let minBlurSize = CGSize(width: 8, height: 8)
+    /// The smallest crop, in image px (spec §5.7).
+    static let minCropSize = CGSize(width: 8, height: 8)
 
     init(baseImage: CGImage, pointsPerPixel: CGFloat) {
         self.baseImage = baseImage
@@ -101,6 +107,11 @@ final class EditorState {
     /// Arrow stroke width: 0.4% of the image's long side, clamped to 3–10 px (spec §5.4).
     var arrowStrokeWidth: CGFloat {
         Geometry.clamp(0.004 * CGFloat(max(baseImage.width, baseImage.height)), 3, 10)
+    }
+
+    /// Default font size: 3% of the image's long side, clamped to 14–48 px (spec §5.6).
+    var defaultFontSize: CGFloat {
+        Geometry.clamp(0.03 * CGFloat(max(baseImage.width, baseImage.height)), 14, 48)
     }
 
     // MARK: - Changes
@@ -158,6 +169,11 @@ final class EditorState {
         let recolor: (inout EditorDocument) -> Void = { document in
             document.updateAnnotation(withID: selectedID) { $0 = $0.withColor(hex) }
         }
+        if editingTextID == selectedID {
+            // Part of the text edit's undo step.
+            updateLive(recolor)
+            return
+        }
         let now = Date()
         if let colorChange, colorChange.id == selectedID,
            now.timeIntervalSince(colorChange.time) < Self.colorCoalesceInterval {
@@ -185,17 +201,106 @@ final class EditorState {
         }
     }
 
+    // MARK: - Text editing
+
+    /// Starts editing a text annotation. A new one (not yet in the document)
+    /// is added now and kept only if it has text when editing ends.
+    func beginTextEditing(_ text: TextAnnotation, isNew: Bool) {
+        tool = .select
+        beginLiveChange()
+        if isNew {
+            updateLive { $0.annotations.append(.text(text)) }
+        }
+        selectedID = text.id
+        editingTextID = text.id
+    }
+
+    func updateEditingText(_ string: String) {
+        guard let editingTextID else { return }
+        updateLive { document in
+            document.updateAnnotation(withID: editingTextID) { annotation in
+                guard case .text(var text) = annotation else { return }
+                text.string = string
+                annotation = .text(text)
+            }
+        }
+    }
+
+    /// Ends editing. Empty text is removed; otherwise the edit is one undo step.
+    func endTextEditing() {
+        guard let id = editingTextID else { return }
+        editingTextID = nil
+        if case .text(let text)? = document.annotation(withID: id),
+           text.string.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            updateLive { $0.removeAnnotation(withID: id) }
+        }
+        endLiveChange()
+    }
+
+    // MARK: - Crop
+
+    func updateCropDraft(_ rect: CGRect) {
+        guard cropDraft != nil else { return }
+        cropDraft = Geometry.clampRect(Geometry.roundedRect(rect), to: imageBounds)
+    }
+
+    /// Applies the crop as one undo step and returns to Select.
+    func applyCrop() {
+        guard tool == .crop else { return }
+        tool = .select
+    }
+
+    /// Restores the crop from before crop mode and returns to Select.
+    func cancelCrop() {
+        guard tool == .crop else { return }
+        cropDraft = nil
+        tool = .select
+    }
+
+    private func toolDidChange(from oldTool: Tool) {
+        guard tool != oldTool else { return }
+        endTextEditing()
+        if tool != .select { selectedID = nil }
+        if oldTool == .crop {
+            // Leaving crop mode by any route except Esc applies the crop.
+            if let draft = cropDraft {
+                cropDraft = nil
+                commit { $0.cropRect = draft }
+            }
+        }
+        if tool == .crop {
+            cropDraft = document.cropRect
+        }
+    }
+
     // MARK: - Actions
 
-    func save() { onSave() }
+    func save() {
+        endTextEditing()
+        applyCrop()
+        onSave()
+    }
+
     func cancel() { onCancel() }
+
+    /// Esc cancels crop mode first, then the whole editor (spec §5.7).
+    func escape() {
+        if tool == .crop {
+            cancelCrop()
+        } else {
+            cancel()
+        }
+    }
 
     /// Handles a key that no text view consumed. Returns false if unhandled.
     func handleKey(_ event: NSEvent) -> Bool {
         let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
         switch event.keyCode {
         case 53: // Esc
-            cancel()
+            escape()
+            return true
+        case 36 where tool == .crop, 76 where tool == .crop: // Return, Enter
+            applyCrop()
             return true
         case 51, 117: // Delete, Forward Delete
             deleteSelection()

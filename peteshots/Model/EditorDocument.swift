@@ -116,9 +116,8 @@ nonisolated enum Annotation: Equatable, Sendable, Identifiable {
             Geometry.distance(from: point, toSegment: arrow.start, arrow.end) <= tolerance + arrow.strokeWidth / 2
         case .blur(let blur):
             blur.rect.standardized.contains(point)
-        case .text:
-            // Text bounds need the shared text layout, which arrives with the text tool (Phase 5).
-            false
+        case .text(let text):
+            TextLayout.frame(of: text).insetBy(dx: -tolerance / 2, dy: -tolerance / 2).contains(point)
         }
     }
 
@@ -129,9 +128,8 @@ nonisolated enum Annotation: Equatable, Sendable, Identifiable {
             [arrow.start, arrow.end]
         case .blur(let blur):
             Geometry.RectHandle.allCases.map { $0.point(in: blur.rect.standardized) }
-        case .text:
-            // Corner handles come with the text layout (Phase 5).
-            []
+        case .text(let text):
+            Geometry.RectHandle.corners.map { $0.point(in: TextLayout.frame(of: text)) }
         }
     }
 }

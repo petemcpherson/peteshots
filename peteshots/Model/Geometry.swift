@@ -25,6 +25,22 @@ nonisolated enum Geometry {
             }
         }
 
+        /// The handle on the other side of the rect.
+        var opposite: RectHandle {
+            switch self {
+            case .topLeft: .bottomRight
+            case .top: .bottom
+            case .topRight: .bottomLeft
+            case .right: .left
+            case .bottomRight: .topLeft
+            case .bottom: .top
+            case .bottomLeft: .topRight
+            case .left: .right
+            }
+        }
+
+        static let corners: [RectHandle] = [.topLeft, .topRight, .bottomRight, .bottomLeft]
+
         var movesMinX: Bool { self == .topLeft || self == .left || self == .bottomLeft }
         var movesMaxX: Bool { self == .topRight || self == .right || self == .bottomRight }
         var movesMinY: Bool { self == .topLeft || self == .top || self == .topRight }
@@ -55,9 +71,17 @@ nonisolated enum Geometry {
     }
 
     /// The handle within `radius` of `point`, if any. Corners win over edges.
-    static func handle(at point: CGPoint, in rect: CGRect, radius: CGFloat) -> RectHandle? {
-        let ordered: [RectHandle] = [.topLeft, .topRight, .bottomRight, .bottomLeft, .top, .right, .bottom, .left]
+    static func handle(at point: CGPoint, in rect: CGRect, radius: CGFloat, cornersOnly: Bool = false) -> RectHandle? {
+        let ordered: [RectHandle] = cornersOnly
+            ? RectHandle.corners
+            : RectHandle.corners + [.top, .right, .bottom, .left]
         return ordered.first { distance($0.point(in: rect), point) <= radius }
+    }
+
+    /// The rect with each edge rounded to the nearest whole pixel.
+    static func roundedRect(_ rect: CGRect) -> CGRect {
+        let minX = rect.minX.rounded(), minY = rect.minY.rounded()
+        return CGRect(x: minX, y: minY, width: rect.maxX.rounded() - minX, height: rect.maxY.rounded() - minY)
     }
 
     /// Moves the edges that `handle` controls to `point`. The opposite edges stay

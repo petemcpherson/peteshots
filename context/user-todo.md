@@ -15,3 +15,14 @@ The AI Agent can give Pete (the dev) manual to-do items here (clear, CONCISE, st
   3. Press V, A, B, T, C and click the toolbar buttons. The highlighted tool changes each time.
   4. Press Cmd-Shift-A while the editor is open: the editor comes to the front, no overlay.
   5. Close with Esc, then with Cancel, then with the red close button. Each closes with no prompt, and the next Cmd-Shift-A shows the overlay again.
+
+- [ ] **Text and crop tools (Phase 5).**
+  1. Press T and click the image. Type two lines (Return adds a line). Check the cursor shows and the text has a soft dark shadow.
+  2. Press Esc. Editing ends, the editor stays open, and the text is selected with 4 corner handles.
+  3. Drag the text to move it. Drag a corner handle: the text scales and the opposite corner stays still.
+  4. Double-click the text, change it, then click outside. Press Cmd-Z: the old text returns. Cmd-Shift-Z: the new text returns.
+  5. Click with T, type nothing, click outside. No empty box remains.
+  6. While typing, press V, A, B, Delete. They go into the text, not the tools.
+  7. Press C. The full image shows with a dimmed outside and 8 handles. Drag handles and the inside. Press Return: only the crop area shows.
+  8. Press C again, change the crop, press Esc: the previous crop stays. Press Cmd-Z after an applied crop: the crop is undone.
+

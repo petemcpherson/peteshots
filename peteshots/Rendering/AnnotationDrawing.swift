@@ -3,7 +3,7 @@
 //  peteshots
 //
 
-import CoreGraphics
+import AppKit
 
 /// Shared annotation drawing for the canvas and the export (spec §7.1). Every
 /// function takes a context set up in image pixels with a top-left origin.
@@ -18,7 +18,7 @@ nonisolated enum AnnotationDrawing {
             switch annotation {
             case .arrow(let arrow): drawArrow(arrow, in: context)
             case .blur: break
-            case .text: break // Text drawing arrives with the text tool (Phase 5).
+            case .text(let text): drawText(text, in: context)
             }
         }
     }
@@ -77,6 +77,34 @@ nonisolated enum AnnotationDrawing {
         context.translateBy(x: 0, y: target.maxY)
         context.scaleBy(x: 1, y: -1)
         context.draw(image, in: CGRect(x: target.minX, y: 0, width: target.width, height: target.height))
+        context.restoreGState()
+    }
+
+    // MARK: - Text
+
+    static func drawText(_ text: TextAnnotation, in context: CGContext) {
+        // Shadows ignore the context transform, so the blur is scaled to device
+        // pixels here. The canvas and the export then show the same shadow.
+        let transform = context.userSpaceToDeviceSpaceTransform
+        let deviceScale = hypot(transform.a, transform.b)
+        let attributed = NSAttributedString(
+            string: text.string,
+            attributes: TextLayout.attributes(
+                fontSize: text.fontSize,
+                colorHex: text.colorHex,
+                shadowBlur: TextLayout.shadowBlurRadius * deviceScale
+            )
+        )
+        let height = CGFloat(TextLayout.lineCount(of: text.string)) * text.fontSize * TextLayout.lineHeightMultiple
+
+        context.saveGState()
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = NSGraphicsContext(cgContext: context, flipped: true)
+        attributed.draw(
+            with: CGRect(x: text.origin.x, y: text.origin.y, width: TextLayout.unlimitedWidth, height: height),
+            options: [.usesLineFragmentOrigin]
+        )
+        NSGraphicsContext.restoreGraphicsState()
         context.restoreGState()
     }
 }

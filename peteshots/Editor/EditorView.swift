@@ -33,6 +33,12 @@ struct EditorView: View {
                 .labelsHidden()
                 .help("Annotation color")
 
+            if state.tool == .crop {
+                Button("Apply Crop", systemImage: "checkmark") { state.applyCrop() }
+                    .help("Apply crop (Return). Esc cancels.")
+                    .padding(.leading, 6)
+            }
+
             Spacer()
 
             Button("Cancel") { state.cancel() }

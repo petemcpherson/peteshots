@@ -8,7 +8,7 @@ Source: `context/spec.md` (final). This plan breaks the spec into 8 phases. Each
 - [x] Phase 2 — Hotkey, permission, selection overlay, and capture
 - [x] Phase 3 — Editor foundation (window, document model, canvas, toolbar, undo)
 - [x] Phase 4 — Arrow tool, blur tool, and color picker
-- [ ] Phase 5 — Text tool and crop tool
+- [x] Phase 5 — Text tool and crop tool
 - [ ] Phase 6 — Export pipeline (flatten, resize, encode, write, clipboard)
 - [ ] Phase 7 — Toast notification and full Settings window
 - [ ] Phase 8 — Edge cases, polish, and acceptance testing
@@ -257,7 +257,7 @@ nonisolated enum Annotation: Equatable, Sendable, Identifiable {
 
 ---
 
-## Phase 5 — Text tool and crop tool
+## Phase 5 — Text tool and crop tool [COMPLETED]
 
 ### 5.1 Text model and drawing (§5.6)
 - `TextAnnotation`: `origin` (top-left, image px), `string`, `fontSize` (px), `colorHex`.

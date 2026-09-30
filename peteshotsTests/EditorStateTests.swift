@@ -156,4 +156,111 @@ struct EditorStateTests {
             #expect(state.document.annotations.isEmpty)
         }
     }
+
+    // MARK: - Text
+
+    private func text(_ string: String) -> TextAnnotation {
+        TextAnnotation(origin: CGPoint(x: 2, y: 2), string: string, fontSize: 14, colorHex: "#FF0000")
+    }
+
+    @Test func defaultFontSizeIsClamped() {
+        let (state, _) = makeState()
+        #expect(state.defaultFontSize == 14)
+    }
+
+    @Test func newTextEditIsOneUndoStep() {
+        let (state, undoManager) = makeState()
+        state.tool = .text
+        let new = text("")
+        step(undoManager) {
+            state.beginTextEditing(new, isNew: true)
+            #expect(state.tool == .select)
+            #expect(state.editingTextID == new.id)
+            state.updateEditingText("H")
+            state.updateEditingText("Hi")
+            state.endTextEditing()
+        }
+        #expect(state.editingTextID == nil)
+        #expect(state.selectedID == new.id)
+        guard case .text(let placed)? = state.document.annotations.first else {
+            Issue.record("No text annotation")
+            return
+        }
+        #expect(placed.string == "Hi")
+
+        undoManager.undo()
+        #expect(state.document.annotations.isEmpty)
+    }
+
+    @Test func emptyNewTextIsRemovedWithoutUndoStep() {
+        let (state, undoManager) = makeState()
+        // Nothing registers, so no undo group is needed.
+        state.beginTextEditing(text(""), isNew: true)
+        state.updateEditingText("  \n ")
+        state.endTextEditing()
+        #expect(state.document.annotations.isEmpty)
+        #expect(!undoManager.canUndo)
+    }
+
+    @Test func editingExistingTextRestoresOnUndo() {
+        let (state, undoManager) = makeState()
+        let original = text("Old")
+        step(undoManager) { state.place(.text(original)) }
+        step(undoManager) {
+            state.beginTextEditing(original, isNew: false)
+            state.updateEditingText("New")
+            state.endTextEditing()
+        }
+        #expect(state.document.annotations.first?.id == original.id)
+        undoManager.undo()
+        #expect(state.document.annotations == [.text(original)])
+    }
+
+    @Test func toolChangeEndsTextEditing() {
+        let (state, undoManager) = makeState()
+        step(undoManager) {
+            state.beginTextEditing(text(""), isNew: true)
+            state.updateEditingText("Hi")
+            state.tool = .arrow
+        }
+        #expect(state.editingTextID == nil)
+        #expect(state.document.annotations.count == 1)
+    }
+
+    // MARK: - Crop
+
+    @Test func applyCropIsOneUndoStep() {
+        let (state, undoManager) = makeState()
+        state.tool = .crop
+        #expect(state.cropDraft == state.imageBounds)
+        state.updateCropDraft(CGRect(x: 4.4, y: 2.6, width: 20, height: 10))
+        #expect(state.cropDraft == CGRect(x: 4, y: 3, width: 20, height: 10))
+        step(undoManager) { state.applyCrop() }
+        #expect(state.tool == .select)
+        #expect(state.cropDraft == nil)
+        #expect(state.document.cropRect == CGRect(x: 4, y: 3, width: 20, height: 10))
+
+        undoManager.undo()
+        #expect(state.document.cropRect == state.imageBounds)
+    }
+
+    @Test func escapeCancelsCropOnly() {
+        let (state, undoManager) = makeState()
+        var cancelled = false
+        state.onCancel = { cancelled = true }
+        state.tool = .crop
+        state.updateCropDraft(CGRect(x: 0, y: 0, width: 10, height: 10))
+        state.escape()
+        #expect(!cancelled)
+        #expect(state.tool == .select)
+        #expect(state.document.cropRect == state.imageBounds)
+        #expect(!undoManager.canUndo)
+    }
+
+    @Test func cropDraftStaysInImage() {
+        let (state, _) = makeState()
+        state.tool = .crop
+        state.updateCropDraft(CGRect(x: 30, y: 15, width: 20, height: 10))
+        #expect(state.cropDraft == CGRect(x: 20, y: 10, width: 20, height: 10))
+    }
 }

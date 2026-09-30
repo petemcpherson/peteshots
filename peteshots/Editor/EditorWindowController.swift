@@ -103,7 +103,6 @@ final class EditorWindow: NSWindow {
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
         let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
         let key = event.charactersIgnoringModifiers?.lowercased()
-        // An active text view handles its own undo.
         let textIsEditing = firstResponder is NSTextView
 
         switch (modifiers, key) {
@@ -112,12 +111,23 @@ final class EditorWindow: NSWindow {
                 controller.state.save()
             }
             return true
-        case ([.command], "z") where !textIsEditing:
-            undoManager?.undo()
+        // The first responder's undo manager: the inline text editor has its own.
+        case ([.command], "z"):
+            (firstResponder ?? self).undoManager?.undo()
             return true
-        case ([.command, .shift], "z") where !textIsEditing:
-            undoManager?.redo()
+        case ([.command, .shift], "z"):
+            (firstResponder ?? self).undoManager?.redo()
             return true
+        // The app has no visible Edit menu, so the inline text editor gets
+        // these directly.
+        case ([.command], "x") where textIsEditing:
+            return NSApp.sendAction(#selector(NSText.cut(_:)), to: nil, from: self)
+        case ([.command], "c") where textIsEditing:
+            return NSApp.sendAction(#selector(NSText.copy(_:)), to: nil, from: self)
+        case ([.command], "v") where textIsEditing:
+            return NSApp.sendAction(#selector(NSText.paste(_:)), to: nil, from: self)
+        case ([.command], "a") where textIsEditing:
+            return NSApp.sendAction(#selector(NSText.selectAll(_:)), to: nil, from: self)
         case ([.command], "w"):
             performClose(nil)
             return true
@@ -134,7 +144,7 @@ final class EditorWindow: NSWindow {
 
     override func cancelOperation(_ sender: Any?) {
         if let controller = windowController as? EditorWindowController {
-            controller.state.cancel()
+            controller.state.escape()
         }
     }
 }
