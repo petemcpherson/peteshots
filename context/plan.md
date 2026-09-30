@@ -7,7 +7,7 @@ Source: `context/spec.md` (final). This plan breaks the spec into 8 phases. Each
 - [x] Phase 1 — Project setup and app shell
 - [x] Phase 2 — Hotkey, permission, selection overlay, and capture
 - [x] Phase 3 — Editor foundation (window, document model, canvas, toolbar, undo)
-- [ ] Phase 4 — Arrow tool, blur tool, and color picker
+- [x] Phase 4 — Arrow tool, blur tool, and color picker
 - [ ] Phase 5 — Text tool and crop tool
 - [ ] Phase 6 — Export pipeline (flatten, resize, encode, write, clipboard)
 - [ ] Phase 7 — Toast notification and full Settings window
@@ -223,7 +223,7 @@ nonisolated enum Annotation: Equatable, Sendable, Identifiable {
 
 ---
 
-## Phase 4 — Arrow tool, blur tool, and color picker
+## Phase 4 — Arrow tool, blur tool, and color picker [COMPLETED]
 
 **Goal:** fully working arrows and blurs, drawn with the shared drawing code, and a persistent color.
 

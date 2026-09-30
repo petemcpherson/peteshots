@@ -61,9 +61,11 @@ final class EditorState {
         didSet { if tool != .select { selectedID = nil } }
     }
 
-    var selectedID: Annotation.ID?
+    var selectedID: Annotation.ID? {
+        didSet { if selectedID != oldValue { colorChange = nil } }
+    }
     var editingTextID: Annotation.ID?
-    var colorHex: String
+    private(set) var colorHex: String
 
     @ObservationIgnored var undoManager: UndoManager?
     @ObservationIgnored var onSave: () -> Void = {}
@@ -71,6 +73,14 @@ final class EditorState {
 
     /// The document when the current live drag started.
     @ObservationIgnored private var liveChangeStart: EditorDocument?
+    /// The annotation whose color is changing and the time of the last change.
+    /// Continuous color panel updates coalesce into one undo step.
+    @ObservationIgnored private var colorChange: (id: Annotation.ID, time: Date)?
+
+    /// A pause longer than this starts a new color undo step.
+    static let colorCoalesceInterval: TimeInterval = 1
+    /// The smallest blur region, in image px (spec §5.5).
+    static let minBlurSize = CGSize(width: 8, height: 8)
 
     init(baseImage: CGImage, pointsPerPixel: CGFloat) {
         self.baseImage = baseImage
@@ -88,6 +98,11 @@ final class EditorState {
         selectedID.flatMap { document.annotation(withID: $0) }
     }
 
+    /// Arrow stroke width: 0.4% of the image's long side, clamped to 3–10 px (spec §5.4).
+    var arrowStrokeWidth: CGFloat {
+        Geometry.clamp(0.004 * CGFloat(max(baseImage.width, baseImage.height)), 3, 10)
+    }
+
     // MARK: - Changes
 
     /// Applies a change as one undo step.
@@ -95,7 +110,8 @@ final class EditorState {
         var newDocument = document
         change(&newDocument)
         guard newDocument != document else { return }
-        replaceDocument(with: newDocument, undoTo: document)
+        colorChange = nil
+        replaceDocument(with: newDocument)
     }
 
     /// Saves the document before a drag. Call `updateLive` during the drag
@@ -114,7 +130,8 @@ final class EditorState {
         guard let start = liveChangeStart else { return }
         liveChangeStart = nil
         guard start != document else { return }
-        registerUndo(restoring: start, redoTo: document)
+        colorChange = nil
+        registerUndo(restoring: start)
     }
 
     /// Adds a new annotation, then selects it with the Select tool (spec §5.2).
@@ -130,14 +147,41 @@ final class EditorState {
         self.selectedID = nil
     }
 
-    private func replaceDocument(with newDocument: EditorDocument, undoTo oldDocument: EditorDocument) {
-        registerUndo(restoring: oldDocument, redoTo: newDocument)
+    /// Sets the annotation color and saves it as the default. A selected arrow
+    /// or text annotation takes the new color (spec §5.3).
+    func setColor(_ hex: String) {
+        guard hex != colorHex else { return }
+        colorHex = hex
+        UserDefaults.standard.set(hex, forKey: AppSettings.Key.annotationColorHex)
+
+        guard let selectedID, selectedAnnotation?.colorHex != nil else { return }
+        let recolor: (inout EditorDocument) -> Void = { document in
+            document.updateAnnotation(withID: selectedID) { $0 = $0.withColor(hex) }
+        }
+        let now = Date()
+        if let colorChange, colorChange.id == selectedID,
+           now.timeIntervalSince(colorChange.time) < Self.colorCoalesceInterval {
+            // Same color session: the undo step registered by the first change
+            // restores the original color, and redo returns the latest one.
+            updateLive(recolor)
+        } else {
+            commit(recolor)
+        }
+        colorChange = (selectedID, now)
+    }
+
+    /// Registers an undo step to `oldDocument`, then replaces the document.
+    private func replaceDocument(with newDocument: EditorDocument) {
+        registerUndo(restoring: document)
         document = newDocument
     }
 
-    private func registerUndo(restoring oldDocument: EditorDocument, redoTo newDocument: EditorDocument) {
+    /// Undo restores `oldDocument`. Redo goes back to the document as it is when
+    /// undo runs, so live updates after the registration (color changes) are kept.
+    private func registerUndo(restoring oldDocument: EditorDocument) {
         undoManager?.registerUndo(withTarget: self) { state in
-            state.replaceDocument(with: oldDocument, undoTo: newDocument)
+            state.colorChange = nil
+            state.replaceDocument(with: oldDocument)
         }
     }
 

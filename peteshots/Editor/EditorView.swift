@@ -25,6 +25,14 @@ struct EditorView: View {
                 }
             }
 
+            Divider()
+                .frame(height: 20)
+                .padding(.horizontal, 6)
+
+            ColorPicker("", selection: colorBinding, supportsOpacity: false)
+                .labelsHidden()
+                .help("Annotation color")
+
             Spacer()
 
             Button("Cancel") { state.cancel() }
@@ -36,6 +44,16 @@ struct EditorView: View {
         .padding(.horizontal, 10)
         .frame(height: EditorWindowController.toolbarHeight - 1)
         .focusEffectDisabled()
+    }
+
+    /// The color as a SwiftUI `Color`, stored as sRGB hex (spec §5.3).
+    private var colorBinding: Binding<Color> {
+        Binding(
+            get: { Color(hex: state.colorHex) },
+            set: { color in
+                if let hex = color.hexString { state.setColor(hex) }
+            }
+        )
     }
 }
 

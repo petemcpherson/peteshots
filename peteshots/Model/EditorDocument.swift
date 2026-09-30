@@ -70,6 +70,29 @@ nonisolated enum Annotation: Equatable, Sendable, Identifiable {
         if case .blur = self { true } else { false }
     }
 
+    /// Arrows and text use the annotation color. Blur does not (spec §5.3).
+    var colorHex: String? {
+        switch self {
+        case .arrow(let arrow): arrow.colorHex
+        case .blur: nil
+        case .text(let text): text.colorHex
+        }
+    }
+
+    /// The annotation with a new color. A blur is returned unchanged.
+    func withColor(_ hex: String) -> Annotation {
+        switch self {
+        case .arrow(var arrow):
+            arrow.colorHex = hex
+            return .arrow(arrow)
+        case .blur:
+            return self
+        case .text(var text):
+            text.colorHex = hex
+            return .text(text)
+        }
+    }
+
     /// Moves the whole annotation by the given offset in image pixels.
     func offsetBy(dx: CGFloat, dy: CGFloat) -> Annotation {
         switch self {

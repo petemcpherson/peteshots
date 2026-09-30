@@ -13,10 +13,27 @@ final class CanvasView: NSView {
     /// Hit-test tolerance in view points (spec §5.4).
     static let hitTolerance: CGFloat = 8
 
-    private let state: EditorState
+    /// Drags shorter than this (view points) do not create an arrow.
+    static let minArrowDrag: CGFloat = 4
 
-    /// The annotation being moved and the last drag point (image px).
-    private var moveDrag: (id: Annotation.ID, last: CGPoint)?
+    /// What the current mouse drag does. Points are in image px.
+    private enum Drag {
+        /// Moves a whole annotation. `last` is the previous drag point.
+        case move(id: Annotation.ID, last: CGPoint)
+        /// Moves one end of an arrow.
+        case arrowEnd(id: Annotation.ID, isStart: Bool)
+        /// Resizes a blur by one of its 8 handles.
+        case blurResize(id: Annotation.ID, handle: Geometry.RectHandle)
+        /// Creates a new annotation with the arrow or blur tool.
+        case create(tool: Tool, start: CGPoint)
+    }
+
+    private let state: EditorState
+    private var drag: Drag?
+    /// The annotation being created, drawn on top until mouse-up.
+    private var draft: Annotation? {
+        didSet { needsDisplay = true }
+    }
 
     init(state: EditorState) {
         self.state = state
@@ -50,9 +67,19 @@ final class CanvasView: NSView {
             _ = state.tool
         } onChange: { [weak self] in
             Task { @MainActor in
-                self?.needsDisplay = true
-                self?.observeState()
+                guard let self else { return }
+                self.needsDisplay = true
+                self.window?.invalidateCursorRects(for: self)
+                self.observeState()
             }
+        }
+    }
+
+    override func resetCursorRects() {
+        switch state.tool {
+        case .arrow, .blur, .crop: addCursorRect(bounds, cursor: .crosshair)
+        case .text: addCursorRect(bounds, cursor: .iBeam)
+        case .select: break
         }
     }
 
@@ -120,8 +147,15 @@ final class CanvasView: NSView {
         context.clip(to: visible)
         context.interpolationQuality = .high
         drawBaseImage(in: context)
-        // Annotations draw here through AnnotationDrawing (Phase 4).
+        AnnotationDrawing.draw(state.document.annotations, base: state.baseImage, in: context)
+        if let draft {
+            AnnotationDrawing.draw([draft], base: state.baseImage, in: context)
+        }
         context.restoreGState()
+
+        if case .blur(let blur)? = draft {
+            strokeOutline(of: blur.rect)
+        }
 
         drawSelectionHandles()
     }
@@ -140,6 +174,9 @@ final class CanvasView: NSView {
     /// Handles draw in view space at a fixed size, so they stay usable at any scale.
     private func drawSelectionHandles() {
         guard let annotation = state.selectedAnnotation else { return }
+        if case .blur(let blur) = annotation {
+            strokeOutline(of: blur.rect)
+        }
         let size = Self.handleSize
         for point in annotation.handlePoints {
             let center = imageToView(point)
@@ -153,6 +190,17 @@ final class CanvasView: NSView {
         }
     }
 
+    /// A thin outline around a blur region (image px), drawn in view space.
+    private func strokeOutline(of rect: CGRect) {
+        let rect = rect.standardized
+        let topLeft = imageToView(rect.origin)
+        let bottomRight = imageToView(CGPoint(x: rect.maxX, y: rect.maxY))
+        let path = NSBezierPath(rect: Geometry.rect(from: topLeft, to: bottomRight).insetBy(dx: 0.5, dy: 0.5))
+        path.lineWidth = 1
+        NSColor.controlAccentColor.setStroke()
+        path.stroke()
+    }
+
     // MARK: - Mouse
 
     override func mouseDown(with event: NSEvent) {
@@ -161,38 +209,124 @@ final class CanvasView: NSView {
 
         switch state.tool {
         case .select:
-            selectAndBeginMove(at: point)
-        case .arrow, .blur, .text, .crop:
-            // Tool input arrives in Phases 4 and 5.
+            beginSelectDrag(at: point)
+        case .arrow, .blur:
+            drag = .create(tool: state.tool, start: Geometry.clampPoint(point, to: state.imageBounds))
+        case .text, .crop:
+            // Tool input arrives in Phase 5.
             break
         }
     }
 
     override func mouseDragged(with event: NSEvent) {
-        guard let moveDrag else { return }
+        guard let drag else { return }
         let point = viewToImage(convert(event.locationInWindow, from: nil))
-        let dx = point.x - moveDrag.last.x
-        let dy = point.y - moveDrag.last.y
-        state.updateLive { document in
-            document.updateAnnotation(withID: moveDrag.id) { $0 = $0.offsetBy(dx: dx, dy: dy) }
+
+        switch drag {
+        case .move(let id, let last):
+            let dx = point.x - last.x
+            let dy = point.y - last.y
+            state.updateLive { document in
+                document.updateAnnotation(withID: id) { $0 = $0.offsetBy(dx: dx, dy: dy) }
+            }
+            self.drag = .move(id: id, last: point)
+
+        case .arrowEnd(let id, let isStart):
+            state.updateLive { document in
+                document.updateAnnotation(withID: id) { annotation in
+                    guard case .arrow(var arrow) = annotation else { return }
+                    if isStart { arrow.start = point } else { arrow.end = point }
+                    annotation = .arrow(arrow)
+                }
+            }
+
+        case .blurResize(let id, let handle):
+            state.updateLive { document in
+                document.updateAnnotation(withID: id) { annotation in
+                    guard case .blur(var blur) = annotation else { return }
+                    blur.rect = Geometry.resize(blur.rect.standardized, handle: handle, to: point, minSize: EditorState.minBlurSize)
+                    annotation = .blur(blur)
+                }
+            }
+
+        case .create(let tool, let start):
+            draft = makeDraft(tool: tool, from: start, to: Geometry.clampPoint(point, to: state.imageBounds))
         }
-        self.moveDrag = (moveDrag.id, point)
     }
 
     override func mouseUp(with event: NSEvent) {
-        guard moveDrag != nil else { return }
-        moveDrag = nil
-        state.endLiveChange()
+        guard let drag else { return }
+        self.drag = nil
+
+        switch drag {
+        case .move, .arrowEnd, .blurResize:
+            state.endLiveChange()
+        case .create:
+            if let draft, isLargeEnough(draft) {
+                state.place(draft)
+            }
+            draft = nil
+        }
     }
 
-    private func selectAndBeginMove(at point: CGPoint) {
+    private func beginSelectDrag(at point: CGPoint) {
+        if let handleDrag = handleDrag(at: point) {
+            state.beginLiveChange()
+            drag = handleDrag
+            return
+        }
         guard let annotation = hitTest(imagePoint: point) else {
             state.selectedID = nil
             return
         }
         state.selectedID = annotation.id
         state.beginLiveChange()
-        moveDrag = (annotation.id, point)
+        drag = .move(id: annotation.id, last: point)
+    }
+
+    /// A drag on one of the selected annotation's handles, if the point is on one.
+    private func handleDrag(at point: CGPoint) -> Drag? {
+        guard let annotation = state.selectedAnnotation else { return nil }
+        let radius = Self.handleSize / fitScale
+        switch annotation {
+        case .arrow(let arrow):
+            // The end wins when both handles overlap, so a short arrow can grow.
+            if Geometry.distance(point, arrow.end) <= radius {
+                return .arrowEnd(id: arrow.id, isStart: false)
+            }
+            if Geometry.distance(point, arrow.start) <= radius {
+                return .arrowEnd(id: arrow.id, isStart: true)
+            }
+            return nil
+        case .blur(let blur):
+            return Geometry.handle(at: point, in: blur.rect.standardized, radius: radius)
+                .map { .blurResize(id: blur.id, handle: $0) }
+        case .text:
+            return nil
+        }
+    }
+
+    private func makeDraft(tool: Tool, from start: CGPoint, to end: CGPoint) -> Annotation? {
+        switch tool {
+        case .arrow:
+            .arrow(ArrowAnnotation(start: start, end: end, colorHex: state.colorHex, strokeWidth: state.arrowStrokeWidth))
+        case .blur:
+            .blur(BlurAnnotation(rect: Geometry.rect(from: start, to: end)))
+        case .select, .text, .crop:
+            nil
+        }
+    }
+
+    /// Tiny drags are ignored instead of placing an annotation.
+    private func isLargeEnough(_ annotation: Annotation) -> Bool {
+        switch annotation {
+        case .arrow(let arrow):
+            Geometry.distance(arrow.start, arrow.end) >= Self.minArrowDrag / fitScale
+        case .blur(let blur):
+            blur.rect.width >= EditorState.minBlurSize.width && blur.rect.height >= EditorState.minBlurSize.height
+        case .text:
+            false
+        }
     }
 
     /// Top-down hit-test: text and arrows before blurs, newest first (spec §5.8).
