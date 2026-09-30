@@ -4,7 +4,7 @@ Source: `context/spec.md` (final). This plan breaks the spec into 8 phases. Each
 
 ## Progress
 
-- [ ] Phase 1 — Project setup and app shell
+- [x] Phase 1 — Project setup and app shell
 - [ ] Phase 2 — Hotkey, permission, selection overlay, and capture
 - [ ] Phase 3 — Editor foundation (window, document model, canvas, toolbar, undo)
 - [ ] Phase 4 — Arrow tool, blur tool, and color picker
@@ -75,7 +75,7 @@ peteshots/
 
 ---
 
-## Phase 1 — Project setup and app shell
+## Phase 1 — Project setup and app shell [COMPLETED]
 
 **Goal:** a menu bar–only app with the correct build settings, the KeyboardShortcuts dependency, and a stub Settings window.
 
