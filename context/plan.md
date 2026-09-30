@@ -6,7 +6,7 @@ Source: `context/spec.md` (final). This plan breaks the spec into 8 phases. Each
 
 - [x] Phase 1 — Project setup and app shell
 - [x] Phase 2 — Hotkey, permission, selection overlay, and capture
-- [ ] Phase 3 — Editor foundation (window, document model, canvas, toolbar, undo)
+- [x] Phase 3 — Editor foundation (window, document model, canvas, toolbar, undo)
 - [ ] Phase 4 — Arrow tool, blur tool, and color picker
 - [ ] Phase 5 — Text tool and crop tool
 - [ ] Phase 6 — Export pipeline (flatten, resize, encode, write, clipboard)
@@ -168,7 +168,7 @@ peteshots/
 
 ---
 
-## Phase 3 — Editor foundation
+## Phase 3 — Editor foundation [COMPLETED]
 
 **Goal:** the captured image opens in a correctly sized editor with a toolbar, the Select tool, the undo system, and Save/Cancel wiring. The tools come in Phases 4–5.
 

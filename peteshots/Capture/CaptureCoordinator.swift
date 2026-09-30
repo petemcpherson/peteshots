@@ -14,8 +14,7 @@ final class CaptureCoordinator {
         case idle
         case selecting
         case capturing
-        // Phase 3 replaces the preview with EditorWindowController.
-        case editing(CapturePreviewWindowController)
+        case editing(EditorWindowController)
     }
 
     private(set) var state: State = .idle
@@ -65,7 +64,7 @@ final class CaptureCoordinator {
                 // Give the window server a moment to remove the overlay from the screen.
                 try await Task.sleep(for: .milliseconds(40))
                 let image = try await ScreenCapturer.capture(cocoaRect: rect)
-                showPreview(image)
+                showEditor(image)
             } catch {
                 logger.error("Capture failed: \(error.localizedDescription, privacy: .public)")
                 reset()
@@ -73,12 +72,12 @@ final class CaptureCoordinator {
         }
     }
 
-    private func showPreview(_ image: CGImage) {
+    private func showEditor(_ image: CGImage) {
         guard let captureRect, let captureScreen else {
             reset()
             return
         }
-        let controller = CapturePreviewWindowController(image: image, captureRect: captureRect, screen: captureScreen) { [weak self] in
+        let controller = EditorWindowController(image: image, captureRect: captureRect, screen: captureScreen) { [weak self] in
             self?.reset()
         }
         state = .editing(controller)
