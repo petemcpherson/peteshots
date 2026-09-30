@@ -1,0 +1,50 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Xcode user state
+xcuserdata/
+*.xcuserstate
+*.xccheckout
+*.moved-aside
+*.xcscmblueprint
+DerivedData/
+build/
+
+# Xcode build and test output
+*.xcresult
+*.ipa
+*.dSYM
+*.dSYM.zip
+*.hmap
+*.xcarchive
+timeline.xctimeline
+playground.xcworkspace
+
+# Swift Package Manager
+# Package.resolved is committed so builds use the same dependency versions.
+.build/
+.swiftpm/
+Packages/
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*~
+
+# Local secrets and signing files (never commit)
+.env
+.env.*
+*.p12
+*.cer
+*.mobileprovision
+*.provisionprofile
+ExportOptions.plist
+
+# Claude Code local settings
+.claude/settings.local.json
