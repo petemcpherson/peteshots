@@ -33,4 +33,20 @@ The AI Agent can give Pete (the dev) manual to-do items here (clear, CONCISE, st
   3. Save twice in the same minute. The second file ends in ` (2)`.
   4. After a save, paste into Preview (File → New from Clipboard) or Slack: the image pastes. Paste into a Finder window: the file is copied.
   5. Capture, then Cancel. No file is written.
-  6. Make a folder read-only, set it as the destination (`defaults write com.peteshots.peteshots destinationPath /path/to/folder` until Phase 7 adds the setting), and save. The editor stays open and Save works again.
+  6. Make a folder read-only, set it as the destination in Settings (**Choose…**), and save. A red error toast shows for 4 s, the editor stays open, and Save works again.
+
+- [ ] **Toast and Settings (Phase 7).**
+  1. Save a capture. A toast shows at the top-right of that display for about 2.5 s: the "Saved" line, plus the resize and compression lines when they apply. The editor window keeps focus until it closes; the toast never takes focus.
+  2. Click the toast. Finder opens with the file selected. After the toast fades, click the same spot: the click goes to the window below.
+  3. Save twice quickly. The second toast replaces the first.
+  4. Open **Settings…** from the menu bar. The window comes to the front.
+  5. Change each setting (prefix, format, resize, max long side, compression, JPEG quality, clipboard) and save a capture after each. The file reflects the change with no restart. The prefix field drops `/` and `:`, and the preview updates.
+  6. Record a new hotkey. It works right away; the old one does nothing.
+  7. Choose a destination, then delete that folder in Finder and save. The file lands in Downloads and the toast shows the warning line.
+
+- [ ] **Launch at login (Phase 7).**
+  1. Build a Release copy (Product → Archive → Distribute App → Copy App, or copy the built `peteshots.app`) into `/Applications`, and run it from there.
+  2. Open System Settings → General → Login Items. If Peteshots shows under "Allow in the Background" as off, turn it on.
+  3. Open Peteshots Settings. The Launch at login status reads "Peteshots opens when you log in."
+  4. Log out and back in. The menu bar icon appears.
+

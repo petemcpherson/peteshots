@@ -10,7 +10,7 @@ Source: `context/spec.md` (final). This plan breaks the spec into 8 phases. Each
 - [x] Phase 4 — Arrow tool, blur tool, and color picker
 - [x] Phase 5 — Text tool and crop tool
 - [x] Phase 6 — Export pipeline (flatten, resize, encode, write, clipboard)
-- [ ] Phase 7 — Toast notification and full Settings window
+- [x] Phase 7 — Toast notification and full Settings window
 - [ ] Phase 8 — Edge cases, polish, and acceptance testing
 
 ---
@@ -339,7 +339,7 @@ nonisolated enum Annotation: Equatable, Sendable, Identifiable {
 
 ---
 
-## Phase 7 — Toast notification and full Settings window
+## Phase 7 — Toast notification and full Settings window [COMPLETED]
 
 ### 7.1 Toast (§8)
 - `ToastPanel`: `NSPanel`, `styleMask: [.borderless, .nonactivatingPanel]`, `level = .statusBar`, `collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]`, `hidesOnDeactivate = false`. It must never become key or main.

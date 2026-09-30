@@ -16,10 +16,12 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
     let state: EditorState
     private let editorUndoManager = UndoManager()
     private let onClose: () -> Void
+    private let captureScreen: NSScreen
     private let logger = Logger(subsystem: "com.peteshots.peteshots", category: "export")
 
     init(image: CGImage, captureRect: CGRect, captureDate: Date, screen: NSScreen, onClose: @escaping () -> Void) {
         self.onClose = onClose
+        self.captureScreen = screen
 
         // Image size in points: a Retina capture shows at its on-screen size (spec §11).
         let pointsPerPixel = captureRect.width / CGFloat(image.width)
@@ -51,13 +53,16 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
         state.undoManager = editorUndoManager
         state.captureDate = captureDate
         state.onSaved = { [weak self] result in
-            // Phase 7 shows the toast.
-            self?.logger.info("Saved \(result.url.path, privacy: .public): \(Int(result.originalSize.width))×\(Int(result.originalSize.height)) → \(Int(result.finalSize.width))×\(Int(result.finalSize.height)), \(result.formattedOriginalBytes, privacy: .public) → \(result.formattedFinalBytes, privacy: .public), fallback: \(result.usedFallback)")
-            self?.close()
+            guard let self else { return }
+            ToastPresenter.shared.show(.saved(result), on: captureScreen)
+            logger.info("Saved \(result.url.path, privacy: .public): \(Int(result.originalSize.width))×\(Int(result.originalSize.height)) → \(Int(result.finalSize.width))×\(Int(result.finalSize.height)), \(result.formattedOriginalBytes, privacy: .public) → \(result.formattedFinalBytes, privacy: .public), fallback: \(result.usedFallback)")
+            close()
         }
         state.onSaveFailed = { [weak self] error in
-            // Phase 7 shows the error toast. The editor stays open.
-            self?.logger.error("Save failed: \(error.localizedDescription, privacy: .public)")
+            // The editor stays open.
+            guard let self else { return }
+            ToastPresenter.shared.show(.error("Save failed", error), on: captureScreen)
+            logger.error("Save failed: \(error.localizedDescription, privacy: .public)")
         }
         state.onCancel = { [weak self] in self?.close() }
     }

@@ -46,7 +46,7 @@ nonisolated enum AppSettings {
     }
 
     /// Registers defaults for every key except `launchAtLogin`, which must stay
-    /// unset until the first-launch registration runs (Phase 7).
+    /// unset until `LaunchAtLogin.registerOnFirstLaunch()` runs.
     static func registerDefaults() {
         UserDefaults.standard.register(defaults: [
             Key.destinationPath: Default.destinationPath,

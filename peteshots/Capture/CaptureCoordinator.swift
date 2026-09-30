@@ -67,6 +67,7 @@ final class CaptureCoordinator {
                 showEditor(image)
             } catch {
                 logger.error("Capture failed: \(error.localizedDescription, privacy: .public)")
+                ToastPresenter.shared.show(.error("Capture failed", error), on: captureScreen)
                 reset()
             }
         }
