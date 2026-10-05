@@ -75,7 +75,14 @@ struct SettingsView: View {
                     .onSubmit(commitMaxLongSide)
                     .onChange(of: maxLongSideDraft) { _, _ in commitMaxLongSide() }
 
-                Toggle("Compression", isOn: $compressionEnabled)
+                VStack(alignment: .leading, spacing: 4) {
+                    Toggle("Compression", isOn: $compressionEnabled)
+                    if imageFormat == .png {
+                        Text("Reduces PNGs to 256 colors. Skipped when it would not save space.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
                 if imageFormat == .jpeg && compressionEnabled {
                     LabeledContent("JPEG quality:") {
                         HStack {

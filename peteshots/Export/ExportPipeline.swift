@@ -15,7 +15,7 @@ nonisolated struct ExportResult: Sendable {
     var didResize: Bool
     var uncompressedBytes: Int
     var finalBytes: Int
-    /// True when compression is on and made the file smaller.
+    /// True when compression is on and saved at least 1%.
     var showCompression: Bool
     var usedFallback: Bool
     /// The written bytes, for the clipboard.
@@ -75,7 +75,8 @@ nonisolated enum ExportPipeline {
             // Keep the uncompressed data if compression made the file bigger (spec §7.3).
             if compressed.count < uncompressed.count {
                 data = compressed
-                showCompression = true
+                // Under 1% rounds to the same size in the toast, so hide the line.
+                showCompression = compressed.count * 100 <= uncompressed.count * 99
             }
         }
 

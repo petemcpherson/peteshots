@@ -12,16 +12,11 @@ nonisolated enum ImageEncoder {
         case failed
     }
 
-    /// Every PNG row filter. `IMAGEIO_PNG_ALL_FILTERS` is a compound macro
-    /// that Swift does not import.
-    private static let allPNGFilters = IMAGEIO_PNG_FILTER_NONE | IMAGEIO_PNG_FILTER_SUB | IMAGEIO_PNG_FILTER_UP
-        | IMAGEIO_PNG_FILTER_AVG | IMAGEIO_PNG_FILTER_PAETH
-
     /// JPEG quality when compression is off.
     static let uncompressedJPEGQuality = 0.95
 
-    /// Encodes `image`. Compression on uses `jpegQuality` for JPEG and
-    /// adaptive filtering for PNG, and removes the EXIF block (spec §7.3).
+    /// Encodes `image`. Compression on uses `jpegQuality` for JPEG and a
+    /// 256-color palette for PNG, and removes the EXIF block (spec §7.3).
     static func encode(_ image: CGImage, format: ImageFormat, compressed: Bool, jpegQuality: Double) throws -> Data {
         let type: UTType = format == .png ? .png : .jpeg
         let data = NSMutableData()
@@ -30,17 +25,18 @@ nonisolated enum ImageEncoder {
         }
 
         var properties: [CFString: Any] = [:]
+        var encoded = image
         switch format {
         case .jpeg:
             properties[kCGImageDestinationLossyCompressionQuality] = compressed ? jpegQuality : uncompressedJPEGQuality
         case .png:
-            if compressed {
-                // Try every PNG row filter and keep the smallest. Lossless.
-                properties[kCGImagePropertyPNGDictionary] = [kCGImagePropertyPNGCompressionFilter: allPNGFilters]
+            // ImageIO has no PNG compression level, so reduce the colors instead.
+            if compressed, let quantized = PNGQuantizer.quantize(image) {
+                encoded = quantized
             }
         }
 
-        CGImageDestinationAddImage(destination, image, properties as CFDictionary)
+        CGImageDestinationAddImage(destination, encoded, properties as CFDictionary)
         guard CGImageDestinationFinalize(destination) else { throw EncodeError.failed }
         guard compressed else { return data as Data }
         switch format {

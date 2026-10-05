@@ -108,11 +108,54 @@ struct ImageEncoderTests {
         #expect(properties[kCGImagePropertyGPSDictionary] == nil)
     }
 
+    @Test func pngCompressionShrinksManyColorImage() throws {
+        let image = ExportTestImages.noise(width: 200, height: 150)
+        let compressed = try ImageEncoder.encode(image, format: .png, compressed: true, jpegQuality: 0.8)
+        let uncompressed = try ImageEncoder.encode(image, format: .png, compressed: false, jpegQuality: 0.8)
+        #expect(compressed.count * 100 <= uncompressed.count * 99)
+        let properties = try #require(ExportTestImages.properties(of: compressed))
+        #expect(properties[kCGImagePropertyPixelWidth] as? Int == 200)
+    }
+
     @Test func jpegQualityChangesSize() throws {
         let image = ExportTestImages.noise(width: 128, height: 128)
         let low = try ImageEncoder.encode(image, format: .jpeg, compressed: true, jpegQuality: 0.6)
         let high = try ImageEncoder.encode(image, format: .jpeg, compressed: false, jpegQuality: 0.6)
         #expect(low.count < high.count)
+    }
+}
+
+struct PNGQuantizerTests {
+    @Test func fewColorsStayExact() throws {
+        let context = ExportTestImages.context(width: 60, height: 40)
+        context.setFillColor(CGColor(srgbRed: 1, green: 1, blue: 1, alpha: 1))
+        context.fill(CGRect(x: 0, y: 0, width: 60, height: 40))
+        context.setFillColor(CGColor(srgbRed: 1, green: 0.231, blue: 0.188, alpha: 1))
+        context.fill(CGRect(x: 0, y: 0, width: 30, height: 40))
+        let image = context.makeImage()!
+
+        let quantized = try #require(PNGQuantizer.quantize(image))
+        #expect(quantized.colorSpace?.model == .indexed)
+        for (x, y) in [(5, 5), (45, 20), (29, 39), (30, 0)] {
+            let before = ExportTestImages.pixel(image, x: x, y: y)
+            let after = ExportTestImages.pixel(quantized, x: x, y: y)
+            #expect(before == after)
+        }
+    }
+
+    @Test func manyColorsFitPalette() throws {
+        let image = ExportTestImages.gradient(width: 300, height: 200)
+        let quantized = try #require(PNGQuantizer.quantize(image))
+        let space = try #require(quantized.colorSpace)
+        #expect(space.model == .indexed)
+        #expect(space.colorTable?.count ?? .max <= PNGQuantizer.maxColors * 3)
+        #expect(quantized.width == 300 && quantized.height == 200)
+        // Dithering keeps colors close to the original.
+        let before = ExportTestImages.pixel(image, x: 150, y: 100)
+        let after = ExportTestImages.pixel(quantized, x: 150, y: 100)
+        #expect(abs(Int(before.r) - Int(after.r)) < 24)
+        #expect(abs(Int(before.g) - Int(after.g)) < 24)
+        #expect(abs(Int(before.b) - Int(after.b)) < 24)
     }
 }
 
@@ -167,6 +210,25 @@ struct RendererTests {
         #expect(result.finalBytes < result.uncompressedBytes)
         #expect(!result.usedFallback)
     }
+
+    @Test func keepsUncompressedPNGWhenPaletteIsBigger() throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+
+        // A smooth gradient is small as lossless PNG but grows when dithered.
+        let base = ExportTestImages.gradient(width: 400, height: 300)
+        let settings = ExportSettings(
+            destinationURL: folder, filenamePrefix: "Test", format: .png, resizeEnabled: false,
+            maxLongSide: 2000, compressionEnabled: true, jpegQuality: 0.8, copyToClipboard: false
+        )
+        let result = try ExportPipeline.export(
+            base: base, document: EditorDocument(imageSize: CGSize(width: 400, height: 300)),
+            captureDate: Date(), settings: settings
+        )
+        #expect(!result.showCompression)
+        #expect(result.finalBytes == result.uncompressedBytes)
+    }
 }
 
 enum ExportTestImages {
@@ -195,6 +257,23 @@ enum ExportTestImages {
                     srgbRed: .random(in: 0...1, using: &generator),
                     green: .random(in: 0...1, using: &generator),
                     blue: .random(in: 0...1, using: &generator),
+                    alpha: 1
+                ))
+                context.fill(CGRect(x: x, y: y, width: 1, height: 1))
+            }
+        }
+        return context.makeImage()!
+    }
+
+    /// A smooth two-axis gradient with far more than 256 colors.
+    static func gradient(width: Int, height: Int) -> CGImage {
+        let context = context(width: width, height: height)
+        for y in 0..<height {
+            for x in 0..<width {
+                context.setFillColor(CGColor(
+                    srgbRed: CGFloat(x) / CGFloat(width),
+                    green: CGFloat(y) / CGFloat(height),
+                    blue: CGFloat(x + y) / CGFloat(width + height),
                     alpha: 1
                 ))
                 context.fill(CGRect(x: x, y: y, width: 1, height: 1))
