@@ -28,9 +28,9 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		47AC8DBC306D50DE005FC8FF /* peteshots.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = peteshots.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		47AC8DCB306D50E0005FC8FF /* peteshotsTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = peteshotsTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		47AC8DD5306D50E0005FC8FF /* peteshotsUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = peteshotsUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		47AC8DBC306D50DE005FC8FF /* Peteshots.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Peteshots.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		47AC8DCB306D50E0005FC8FF /* PeteshotsTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PeteshotsTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		47AC8DD5306D50E0005FC8FF /* PeteshotsUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PeteshotsUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -90,9 +90,9 @@
 		47AC8DBD306D50DE005FC8FF /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				47AC8DBC306D50DE005FC8FF /* peteshots.app */,
-				47AC8DCB306D50E0005FC8FF /* peteshotsTests.xctest */,
-				47AC8DD5306D50E0005FC8FF /* peteshotsUITests.xctest */,
+				47AC8DBC306D50DE005FC8FF /* Peteshots.app */,
+				47AC8DCB306D50E0005FC8FF /* PeteshotsTests.xctest */,
+				47AC8DD5306D50E0005FC8FF /* PeteshotsUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -100,9 +100,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		47AC8DBB306D50DE005FC8FF /* peteshots */ = {
+		47AC8DBB306D50DE005FC8FF /* Peteshots */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 47AC8DDF306D50E0005FC8FF /* Build configuration list for PBXNativeTarget "peteshots" */;
+			buildConfigurationList = 47AC8DDF306D50E0005FC8FF /* Build configuration list for PBXNativeTarget "Peteshots" */;
 			buildPhases = (
 				47AC8DB8306D50DE005FC8FF /* Sources */,
 				47AC8DB9306D50DE005FC8FF /* Frameworks */,
@@ -115,17 +115,17 @@
 			fileSystemSynchronizedGroups = (
 				47AC8DBE306D50DE005FC8FF /* peteshots */,
 			);
-			name = peteshots;
+			name = Peteshots;
 			packageProductDependencies = (
 				47AC8DF1306D50E0005FC8FF /* KeyboardShortcuts */,
 			);
 			productName = peteshots;
-			productReference = 47AC8DBC306D50DE005FC8FF /* peteshots.app */;
+			productReference = 47AC8DBC306D50DE005FC8FF /* Peteshots.app */;
 			productType = "com.apple.product-type.application";
 		};
-		47AC8DCA306D50E0005FC8FF /* peteshotsTests */ = {
+		47AC8DCA306D50E0005FC8FF /* PeteshotsTests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 47AC8DE2306D50E0005FC8FF /* Build configuration list for PBXNativeTarget "peteshotsTests" */;
+			buildConfigurationList = 47AC8DE2306D50E0005FC8FF /* Build configuration list for PBXNativeTarget "PeteshotsTests" */;
 			buildPhases = (
 				47AC8DC7306D50E0005FC8FF /* Sources */,
 				47AC8DC8306D50E0005FC8FF /* Frameworks */,
@@ -139,16 +139,16 @@
 			fileSystemSynchronizedGroups = (
 				47AC8DCE306D50E0005FC8FF /* peteshotsTests */,
 			);
-			name = peteshotsTests;
+			name = PeteshotsTests;
 			packageProductDependencies = (
 			);
 			productName = peteshotsTests;
-			productReference = 47AC8DCB306D50E0005FC8FF /* peteshotsTests.xctest */;
+			productReference = 47AC8DCB306D50E0005FC8FF /* PeteshotsTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-		47AC8DD4306D50E0005FC8FF /* peteshotsUITests */ = {
+		47AC8DD4306D50E0005FC8FF /* PeteshotsUITests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 47AC8DE5306D50E0005FC8FF /* Build configuration list for PBXNativeTarget "peteshotsUITests" */;
+			buildConfigurationList = 47AC8DE5306D50E0005FC8FF /* Build configuration list for PBXNativeTarget "PeteshotsUITests" */;
 			buildPhases = (
 				47AC8DD1306D50E0005FC8FF /* Sources */,
 				47AC8DD2306D50E0005FC8FF /* Frameworks */,
@@ -162,11 +162,11 @@
 			fileSystemSynchronizedGroups = (
 				47AC8DD8306D50E0005FC8FF /* peteshotsUITests */,
 			);
-			name = peteshotsUITests;
+			name = PeteshotsUITests;
 			packageProductDependencies = (
 			);
 			productName = peteshotsUITests;
-			productReference = 47AC8DD5306D50E0005FC8FF /* peteshotsUITests.xctest */;
+			productReference = 47AC8DD5306D50E0005FC8FF /* PeteshotsUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
 /* End PBXNativeTarget section */
@@ -192,7 +192,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 47AC8DB7306D50DE005FC8FF /* Build configuration list for PBXProject "peteshots" */;
+			buildConfigurationList = 47AC8DB7306D50DE005FC8FF /* Build configuration list for PBXProject "Peteshots" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -209,9 +209,9 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				47AC8DBB306D50DE005FC8FF /* peteshots */,
-				47AC8DCA306D50E0005FC8FF /* peteshotsTests */,
-				47AC8DD4306D50E0005FC8FF /* peteshotsUITests */,
+				47AC8DBB306D50DE005FC8FF /* Peteshots */,
+				47AC8DCA306D50E0005FC8FF /* PeteshotsTests */,
+				47AC8DD4306D50E0005FC8FF /* PeteshotsUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -267,12 +267,12 @@
 /* Begin PBXTargetDependency section */
 		47AC8DCD306D50E0005FC8FF /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 47AC8DBB306D50DE005FC8FF /* peteshots */;
+			target = 47AC8DBB306D50DE005FC8FF /* Peteshots */;
 			targetProxy = 47AC8DCC306D50E0005FC8FF /* PBXContainerItemProxy */;
 		};
 		47AC8DD7306D50E0005FC8FF /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 47AC8DBB306D50DE005FC8FF /* peteshots */;
+			target = 47AC8DBB306D50DE005FC8FF /* Peteshots */;
 			targetProxy = 47AC8DD6306D50E0005FC8FF /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -417,7 +417,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.peteshots.peteshots;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -449,7 +449,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.peteshots.peteshots;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -479,7 +479,7 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 6.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/peteshots.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/peteshots";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Peteshots.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Peteshots";
 			};
 			name = Debug;
 		};
@@ -500,7 +500,7 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 6.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/peteshots.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/peteshots";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Peteshots.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Peteshots";
 			};
 			name = Release;
 		};
@@ -545,7 +545,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		47AC8DB7306D50DE005FC8FF /* Build configuration list for PBXProject "peteshots" */ = {
+		47AC8DB7306D50DE005FC8FF /* Build configuration list for PBXProject "Peteshots" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				47AC8DDD306D50E0005FC8FF /* Debug */,
@@ -554,7 +554,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		47AC8DDF306D50E0005FC8FF /* Build configuration list for PBXNativeTarget "peteshots" */ = {
+		47AC8DDF306D50E0005FC8FF /* Build configuration list for PBXNativeTarget "Peteshots" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				47AC8DE0306D50E0005FC8FF /* Debug */,
@@ -563,7 +563,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		47AC8DE2306D50E0005FC8FF /* Build configuration list for PBXNativeTarget "peteshotsTests" */ = {
+		47AC8DE2306D50E0005FC8FF /* Build configuration list for PBXNativeTarget "PeteshotsTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				47AC8DE3306D50E0005FC8FF /* Debug */,
@@ -572,7 +572,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		47AC8DE5306D50E0005FC8FF /* Build configuration list for PBXNativeTarget "peteshotsUITests" */ = {
+		47AC8DE5306D50E0005FC8FF /* Build configuration list for PBXNativeTarget "PeteshotsUITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				47AC8DE6306D50E0005FC8FF /* Debug */,

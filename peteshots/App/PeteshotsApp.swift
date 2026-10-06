@@ -13,7 +13,8 @@ struct PeteshotsApp: App {
         MenuBarExtra {
             MenuContent()
         } label: {
-            Image(nsImage: MenuBarIcon.image)
+            Image("MenuBarIcon")
+                .accessibilityLabel("Peteshots")
         }
 
         Settings {
