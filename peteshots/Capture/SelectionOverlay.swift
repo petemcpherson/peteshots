@@ -97,6 +97,8 @@ final class SelectionOverlay {
     /// Removes the panels from the screen. Safe to call more than once.
     func close() {
         for panel in panels {
+            // Stop event delivery before the panel leaves the screen.
+            panel.ignoresMouseEvents = true
             panel.orderOut(nil)
         }
         panels.removeAll()

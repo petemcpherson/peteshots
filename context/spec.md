@@ -166,7 +166,8 @@ A slim top bar, left to right:
 
 ### 5.4 Arrow tool
 - Drag from the start point to the end point to create an arrow. The arrowhead is at the end point.
-- Style: a solid line with a filled triangular head and rounded caps. Stroke width scales with the image size (about 0.4% of the long side, clamped to 3–10 px). No width control in v1.
+- Style: a solid line with a filled triangular head and rounded caps. Stroke width scales with the image size (about 0.8% of the long side, clamped to 4–20 px). A toolbar menu sets the arrow weight (Thin 0.6×, Regular 1×, Bold 1.5×, Heavy 2× that width). The weight is saved to `UserDefaults`, and a selected arrow takes the new weight.
+- Outline: arrows and text can have an outline (see §5.6a).
 - When the arrow is selected, it shows **two handles**, one at each end. Drag a handle to move only that end.
 - Drag the line body to move the whole arrow.
 - Hit-testing uses a tolerance of about 8 pt around the line.
@@ -183,8 +184,22 @@ A slim top bar, left to right:
 - **Editing:** double-click an existing box to edit. Click outside, or press Esc, to finish editing. Esc while editing ends editing only; it does not discard the screenshot. A box that is empty after editing is deleted.
 - **Move:** drag the box body when the box is selected and not being edited.
 - **Resize changes the font size:** the box shows corner handles. Dragging a handle scales the box uniformly, and the font size changes with it. Rule: `fontSize = boxHeight / lineCount / lineHeightMultiple`, and the width reflows to fit the text. No separate font-size control.
-- Default font size: about 3% of the image's long side, clamped to 14–48 px.
+- Default font size: about 4.5% of the image's long side, clamped to 18–72 px.
 - Text can be multi-line. Return adds a new line. Cmd-Return ends editing.
+
+### 5.6a Outline
+- Arrows and text can have an outline drawn behind them, so they read on any background. The toolbar has an outline color swatch and a width menu: Off, Thin, Medium, Thick.
+- The width scales with the annotation: 0.2× / 0.35× / 0.5× of the stroke width on each side for arrows, and 3% / 6% / 9% of the font size for text. Joins are round.
+- With an outline, the text shadow is drawn on the outline instead of the fill.
+- The outline color and width are saved to `UserDefaults`. Default: white, Medium. A selected arrow or text annotation takes the new outline. Outline color changes coalesce into one undo step, like the annotation color.
+
+### 5.6b Background
+- A toolbar button opens a popover with **None**, 8 built-in gradients, and a **Padding** slider. There are no custom gradients.
+- Gradients: Sunset, Ocean, Grape, Aurora, Mint, Peach (colorful), Cloud (almost white/gray), and Midnight (almost black). Each is a diagonal linear gradient from the top-left to the bottom-right.
+- Padding on each side is a fraction of the crop's long side: 2–20%, default 8%. The output image is the crop plus the padding on each side.
+- With a background, the screenshot has rounded corners (1.2% of the long side, clamped to 6–24 px) and a soft drop shadow (blur 2% of the long side, clamped to 8–40 px). Annotations are clipped to the screenshot.
+- The background is part of the document, so choosing a gradient is one undo step and one slider drag is one undo step. Each capture starts with no background. The padding is saved to `UserDefaults`.
+- In crop mode the canvas hides the background. The button is disabled.
 
 ### 5.7 Crop tool
 - Select the crop tool to show a crop rectangle over the whole image, with 8 handles. The area outside the rectangle is dimmed.
@@ -252,14 +267,15 @@ Use **ImageIO** only (`CGImageDestination`). It is built in, fast, and has no de
 | Format | Compression **off** | Compression **on** (default) |
 |---|---|---|
 | **JPEG** | Quality 0.95 | Quality **0.80** (`kCGImageDestinationLossyCompressionQuality`). This setting is the best size/quality balance for screenshots. |
-| **PNG** | Standard PNG, 8-bit RGB | Lossless optimization: 8-bit RGB with no alpha channel (drop the alpha channel of 32-bit RGBA, about 25% fewer raw bytes), no metadata (EXIF/TIFF/DPI), sRGB. |
+| **PNG** | Standard PNG, 8-bit RGB | Indexed palette PNG (median cut), no metadata (EXIF/TIFF/DPI), sRGB. Level **Light** (default): 256 colors, dithered. **Medium**: 128 colors, dithered. **Strong**: 64 colors, no dithering. Images that already fit the palette stay exact. |
 
 Also, whenever compression is on, write **no metadata** (EXIF/TIFF/GPS) in either format. This is also a privacy benefit.
 
 Settings:
 - **Format:** PNG / JPEG. Default: PNG. Screenshots of text and UI look better as PNG. Choose JPEG for small files.
 - **Compression:** on/off. Default: on.
-- **JPEG quality slider** (60–95%), shown only for JPEG with compression on. Default: 80%.
+- **JPEG quality slider** (30–95%), shown only for JPEG with compression on. Default: 80%.
+- **PNG compression:** Light / Medium / Strong, shown only for PNG with compression on. Default: Light.
 
 **Size shown in the toast:** "original" is the same image (after crop, annotations, and resize) encoded with compression **off**, so the before/after numbers compare only the effect of compression. Encoding twice costs a few milliseconds and is acceptable. If the compressed encoding is ever *larger*, write the uncompressed encoding and do not show the compression line.
 
@@ -307,7 +323,8 @@ A SwiftUI `Settings` scene with one form (tabs are not needed). All values are `
 | Format | Segmented: PNG / JPEG | PNG |
 | Resize large images | Toggle + number field "Max long side (px)" (200–10000) | On, 2000 |
 | Compression | Toggle | On |
-| JPEG quality | Slider 60–95% (JPEG + compression only) | 80% |
+| JPEG quality | Slider 30–95% (JPEG + compression only) | 80% |
+| PNG compression | Segmented: Light / Medium / Strong (PNG + compression only) | Light |
 | Copy to clipboard on save | Toggle | On |
 | Launch at login | Toggle (`SMAppService.mainApp`) | On |
 | Annotation color | Not in Settings. Set from the editor swatch and saved. | `#FF3B30` |

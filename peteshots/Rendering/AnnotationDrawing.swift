@@ -43,25 +43,41 @@ nonisolated enum AnnotationDrawing {
         let halfHead = headLength * headWidthFactor / headLengthFactor / 2
         let base = CGPoint(x: arrow.end.x - unit.x * headLength, y: arrow.end.y - unit.y * headLength)
 
-        context.saveGState()
-        let color = HexColor.cgColor(from: arrow.colorHex)
-        context.setStrokeColor(color)
-        context.setFillColor(color)
+        let wing = CGPoint(x: normal.x * halfHead, y: normal.y * halfHead)
+        let head = [arrow.end, CGPoint(x: base.x + wing.x, y: base.y + wing.y), CGPoint(x: base.x - wing.x, y: base.y - wing.y)]
 
-        // The line ends at the head base. Its round cap hides under the head.
-        if length > headLength {
-            context.setLineWidth(width)
+        /// Draws the arrow shape grown by `pad` on every side.
+        func drawShape(_ colorHex: String, pad: CGFloat) {
+            let color = HexColor.cgColor(from: colorHex)
+            context.setStrokeColor(color)
+            context.setFillColor(color)
             context.setLineCap(.round)
-            context.move(to: arrow.start)
-            context.addLine(to: base)
-            context.strokePath()
+            context.setLineJoin(.round)
+
+            // The line ends at the head base. Its round cap hides under the head.
+            if length > headLength {
+                context.setLineWidth(width + 2 * pad)
+                context.move(to: arrow.start)
+                context.addLine(to: base)
+                context.strokePath()
+            }
+
+            context.addLines(between: head)
+            context.closePath()
+            if pad > 0 {
+                context.setLineWidth(2 * pad)
+                context.drawPath(using: .fillStroke)
+            } else {
+                context.fillPath()
+            }
         }
 
-        context.move(to: arrow.end)
-        context.addLine(to: CGPoint(x: base.x + normal.x * halfHead, y: base.y + normal.y * halfHead))
-        context.addLine(to: CGPoint(x: base.x - normal.x * halfHead, y: base.y - normal.y * halfHead))
-        context.closePath()
-        context.fillPath()
+        context.saveGState()
+        let pad = width * arrow.outline.width.arrowFraction
+        if pad > 0 {
+            drawShape(arrow.outline.colorHex, pad: pad)
+        }
+        drawShape(arrow.colorHex, pad: 0)
         context.restoreGState()
     }
 
@@ -82,28 +98,38 @@ nonisolated enum AnnotationDrawing {
 
     // MARK: - Text
 
-    static func drawText(_ text: TextAnnotation, in context: CGContext) {
+    /// Draws the text. With `outlineOnly`, draws just the outline, for text
+    /// whose fill the inline editor shows.
+    static func drawText(_ text: TextAnnotation, outlineOnly: Bool = false, in context: CGContext) {
         // Shadows ignore the context transform, so the blur is scaled to device
         // pixels here. The canvas and the export then show the same shadow.
         let transform = context.userSpaceToDeviceSpaceTransform
         let deviceScale = hypot(transform.a, transform.b)
-        let attributed = NSAttributedString(
-            string: text.string,
-            attributes: TextLayout.attributes(
-                fontSize: text.fontSize,
-                colorHex: text.colorHex,
-                shadowBlur: TextLayout.shadowBlurRadius * deviceScale
-            )
-        )
+        let shadowBlur = TextLayout.shadowBlurRadius * deviceScale
+        let hasOutline = text.outline.width != .off
+        guard hasOutline || !outlineOnly else { return }
+
         let height = CGFloat(TextLayout.lineCount(of: text.string)) * text.fontSize * TextLayout.lineHeightMultiple
+        let rect = CGRect(x: text.origin.x, y: text.origin.y, width: TextLayout.unlimitedWidth, height: height)
 
         context.saveGState()
         NSGraphicsContext.saveGraphicsState()
         NSGraphicsContext.current = NSGraphicsContext(cgContext: context, flipped: true)
-        attributed.draw(
-            with: CGRect(x: text.origin.x, y: text.origin.y, width: TextLayout.unlimitedWidth, height: height),
-            options: [.usesLineFragmentOrigin]
-        )
+        // Round joins keep thick outlines from spiking at sharp glyph corners.
+        context.setLineJoin(.round)
+        if hasOutline {
+            // The outline carries the shadow, so the fill drawn over it has none.
+            NSAttributedString(
+                string: text.string,
+                attributes: TextLayout.outlineAttributes(fontSize: text.fontSize, outline: text.outline, shadowBlur: shadowBlur)
+            ).draw(with: rect, options: [.usesLineFragmentOrigin])
+        }
+        if !outlineOnly {
+            NSAttributedString(
+                string: text.string,
+                attributes: TextLayout.attributes(fontSize: text.fontSize, colorHex: text.colorHex, shadowBlur: hasOutline ? 0 : shadowBlur)
+            ).draw(with: rect, options: [.usesLineFragmentOrigin])
+        }
         NSGraphicsContext.restoreGraphicsState()
         context.restoreGState()
     }

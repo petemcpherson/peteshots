@@ -71,7 +71,10 @@ nonisolated enum ExportPipeline {
         var data = uncompressed
         var showCompression = false
         if settings.compressionEnabled {
-            let compressed = try ImageEncoder.encode(image, format: settings.format, compressed: true, jpegQuality: settings.jpegQuality)
+            let compressed = try ImageEncoder.encode(
+                image, format: settings.format, compressed: true,
+                jpegQuality: settings.jpegQuality, pngCompression: settings.pngCompression
+            )
             // Keep the uncompressed data if compression made the file bigger (spec §7.3).
             if compressed.count < uncompressed.count {
                 data = compressed

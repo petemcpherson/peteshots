@@ -15,9 +15,15 @@ nonisolated enum ImageEncoder {
     /// JPEG quality when compression is off.
     static let uncompressedJPEGQuality = 0.95
 
-    /// Encodes `image`. Compression on uses `jpegQuality` for JPEG and a
-    /// 256-color palette for PNG, and removes the EXIF block (spec §7.3).
-    static func encode(_ image: CGImage, format: ImageFormat, compressed: Bool, jpegQuality: Double) throws -> Data {
+    /// Encodes `image`. Compression on uses `jpegQuality` for JPEG and the
+    /// `pngCompression` palette for PNG, and removes the EXIF block (spec §7.3).
+    static func encode(
+        _ image: CGImage,
+        format: ImageFormat,
+        compressed: Bool,
+        jpegQuality: Double,
+        pngCompression: PNGCompression = AppSettings.Default.pngCompression
+    ) throws -> Data {
         let type: UTType = format == .png ? .png : .jpeg
         let data = NSMutableData()
         guard let destination = CGImageDestinationCreateWithData(data, type.identifier as CFString, 1, nil) else {
@@ -31,7 +37,7 @@ nonisolated enum ImageEncoder {
             properties[kCGImageDestinationLossyCompressionQuality] = compressed ? jpegQuality : uncompressedJPEGQuality
         case .png:
             // ImageIO has no PNG compression level, so reduce the colors instead.
-            if compressed, let quantized = PNGQuantizer.quantize(image) {
+            if compressed, let quantized = PNGQuantizer.quantize(image, maxColors: pngCompression.maxColors, dither: pngCompression.dither) {
                 encoded = quantized
             }
         }

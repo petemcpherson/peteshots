@@ -11,6 +11,8 @@ import Foundation
 nonisolated struct EditorDocument: Equatable, Sendable {
     var annotations: [Annotation]
     var cropRect: CGRect
+    /// The gradient behind the screenshot. Nil means none (spec §5.6b).
+    var background: Background?
 
     init(imageSize: CGSize) {
         annotations = []
@@ -31,12 +33,56 @@ nonisolated struct EditorDocument: Equatable, Sendable {
     }
 }
 
+/// How thick an outline is. The width scales with the annotation: a fraction
+/// of the stroke width for arrows and of the font size for text.
+nonisolated enum OutlineWidth: String, CaseIterable, Sendable {
+    case off, thin, medium, thick
+
+    var title: String {
+        switch self {
+        case .off: "Off"
+        case .thin: "Thin"
+        case .medium: "Medium"
+        case .thick: "Thick"
+        }
+    }
+
+    /// Outline width on each side, as a fraction of the arrow's stroke width.
+    var arrowFraction: CGFloat {
+        switch self {
+        case .off: 0
+        case .thin: 0.2
+        case .medium: 0.35
+        case .thick: 0.5
+        }
+    }
+
+    /// Outline width on each side, as a fraction of the font size.
+    var textFraction: CGFloat {
+        switch self {
+        case .off: 0
+        case .thin: 0.03
+        case .medium: 0.06
+        case .thick: 0.09
+        }
+    }
+}
+
+/// An outline drawn behind an arrow or text, so it reads on any background.
+nonisolated struct Outline: Equatable, Sendable {
+    var colorHex: String
+    var width: OutlineWidth
+
+    static let off = Outline(colorHex: "#FFFFFF", width: .off)
+}
+
 nonisolated struct ArrowAnnotation: Equatable, Sendable {
     var id = UUID()
     var start: CGPoint
     var end: CGPoint
     var colorHex: String
     var strokeWidth: CGFloat
+    var outline = Outline.off
 }
 
 nonisolated struct BlurAnnotation: Equatable, Sendable {
@@ -51,6 +97,7 @@ nonisolated struct TextAnnotation: Equatable, Sendable {
     var string: String
     var fontSize: CGFloat
     var colorHex: String
+    var outline = Outline.off
 }
 
 nonisolated enum Annotation: Equatable, Sendable, Identifiable {
@@ -91,6 +138,27 @@ nonisolated enum Annotation: Equatable, Sendable, Identifiable {
             text.colorHex = hex
             return .text(text)
         }
+    }
+
+    /// The annotation with a new outline. A blur is returned unchanged.
+    func withOutline(_ outline: Outline) -> Annotation {
+        switch self {
+        case .arrow(var arrow):
+            arrow.outline = outline
+            return .arrow(arrow)
+        case .blur:
+            return self
+        case .text(var text):
+            text.outline = outline
+            return .text(text)
+        }
+    }
+
+    /// The annotation with a new stroke width. Only arrows change.
+    func withStrokeWidth(_ width: CGFloat) -> Annotation {
+        guard case .arrow(var arrow) = self else { return self }
+        arrow.strokeWidth = width
+        return .arrow(arrow)
     }
 
     /// Moves the whole annotation by the given offset in image pixels.

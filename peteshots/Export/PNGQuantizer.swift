@@ -6,10 +6,10 @@
 import CoreGraphics
 import Foundation
 
-/// Reduces an image to at most 256 colors so ImageIO writes an indexed
-/// (palette) PNG. Images with 256 colors or fewer convert losslessly.
-/// Other images use median cut on the exact color histogram, then
-/// Floyd–Steinberg dithering.
+/// Reduces an image to at most `maxColors` colors (up to 256) so ImageIO
+/// writes an indexed (palette) PNG. Images that already fit convert
+/// losslessly. Other images use median cut on the exact color histogram,
+/// then optional Floyd–Steinberg dithering.
 nonisolated enum PNGQuantizer {
     static let maxColors = 256
 
@@ -26,7 +26,8 @@ nonisolated enum PNGQuantizer {
     }
 
     /// Returns an 8-bit indexed image, or nil if drawing fails.
-    static func quantize(_ image: CGImage) -> CGImage? {
+    static func quantize(_ image: CGImage, maxColors: Int = Self.maxColors, dither: Bool = true) -> CGImage? {
+        let limit = min(max(maxColors, 2), Self.maxColors)
         let width = image.width
         let height = image.height
         guard width > 0, height > 0, let rgb = CGColorSpace(name: CGColorSpace.sRGB) else { return nil }
@@ -51,9 +52,9 @@ nonisolated enum PNGQuantizer {
             Entry(color: Color(r: UInt8(key >> 16 & 0xFF), g: UInt8(key >> 8 & 0xFF), b: UInt8(key & 0xFF)), count: count)
         }
 
-        let isExact = entries.count <= maxColors
-        let palette = isExact ? entries.map(\.color) : medianCut(entries)
-        let indices = mapPixels(pixels, width: width, height: height, palette: palette, dither: !isExact)
+        let isExact = entries.count <= limit
+        let palette = isExact ? entries.map(\.color) : medianCut(entries, maxColors: limit)
+        let indices = mapPixels(pixels, width: width, height: height, palette: palette, dither: dither && !isExact)
 
         var table: [UInt8] = []
         table.reserveCapacity(palette.count * 3)
@@ -72,7 +73,7 @@ nonisolated enum PNGQuantizer {
     /// Splits the color histogram into `maxColors` boxes. Each box gives one
     /// palette color: its dominant color when one covers half the box (keeps
     /// flat UI colors exact), otherwise the weighted mean.
-    private static func medianCut(_ entries: [Entry]) -> [Color] {
+    private static func medianCut(_ entries: [Entry], maxColors: Int) -> [Color] {
         var colors = entries
         var boxes: [Range<Int>] = [0..<colors.count]
 

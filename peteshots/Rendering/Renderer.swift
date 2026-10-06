@@ -24,16 +24,29 @@ nonisolated enum Renderer {
 
     /// The crop area of `base` with every annotation drawn on it, through the
     /// same drawing code as the canvas. Annotations outside the crop are clipped.
+    /// With a background, the output adds its padding on each side (spec §5.6b).
     static func flatten(base: CGImage, document: EditorDocument) -> CGImage? {
         let crop = document.cropRect.standardized
-        let width = Int(crop.width.rounded())
-        let height = Int(crop.height.rounded())
+        let output = document.background?.canvasRect(for: crop) ?? crop
+        let width = Int(output.width.rounded())
+        let height = Int(output.height.rounded())
         guard let context = makeContext(width: width, height: height) else { return nil }
 
         context.interpolationQuality = .high
-        context.translateBy(x: -crop.minX, y: -crop.minY)
-        context.clip(to: crop)
+        context.translateBy(x: -output.minX, y: -output.minY)
+        if let background = document.background {
+            BackgroundDrawing.draw(background, crop: crop, in: context) {
+                drawContent(base: base, annotations: document.annotations, in: context)
+            }
+        } else {
+            context.clip(to: crop)
+            drawContent(base: base, annotations: document.annotations, in: context)
+        }
+        return context.makeImage()
+    }
 
+    /// The base image and annotations, in image pixels.
+    private static func drawContent(base: CGImage, annotations: [Annotation], in context: CGContext) {
         let imageHeight = CGFloat(base.height)
         context.saveGState()
         // CGContext.draw expects a bottom-left origin; flip locally so the image is upright.
@@ -42,7 +55,6 @@ nonisolated enum Renderer {
         context.draw(base, in: CGRect(x: 0, y: 0, width: CGFloat(base.width), height: imageHeight))
         context.restoreGState()
 
-        AnnotationDrawing.draw(document.annotations, base: base, in: context)
-        return context.makeImage()
+        AnnotationDrawing.draw(annotations, base: base, in: context)
     }
 }

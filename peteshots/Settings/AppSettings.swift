@@ -17,6 +17,30 @@ nonisolated enum ImageFormat: String, CaseIterable, Sendable {
     }
 }
 
+/// How hard PNG compression reduces colors. Stronger levels use a smaller
+/// palette; Strong also skips dithering, which compresses flat UI better.
+nonisolated enum PNGCompression: String, CaseIterable, Sendable {
+    case light, medium, strong
+
+    var title: String {
+        switch self {
+        case .light: "Light"
+        case .medium: "Medium"
+        case .strong: "Strong"
+        }
+    }
+
+    var maxColors: Int {
+        switch self {
+        case .light: 256
+        case .medium: 128
+        case .strong: 64
+        }
+    }
+
+    var dither: Bool { self != .strong }
+}
+
 /// All UserDefaults keys and default values (spec §9).
 nonisolated enum AppSettings {
     enum Key {
@@ -27,9 +51,14 @@ nonisolated enum AppSettings {
         static let maxLongSide = "maxLongSide"
         static let compressionEnabled = "compressionEnabled"
         static let jpegQuality = "jpegQuality"
+        static let pngCompression = "pngCompression"
         static let copyToClipboard = "copyToClipboard"
         static let launchAtLogin = "launchAtLogin"
         static let annotationColorHex = "annotationColorHex"
+        static let arrowWeight = "arrowWeight"
+        static let outlineColorHex = "outlineColorHex"
+        static let outlineWidth = "outlineWidth"
+        static let backgroundPadding = "backgroundPadding"
     }
 
     enum Default {
@@ -40,9 +69,14 @@ nonisolated enum AppSettings {
         static let maxLongSide = 2000
         static let compressionEnabled = true
         static let jpegQuality = 0.80
+        static let pngCompression = PNGCompression.light
         static let copyToClipboard = true
         static let launchAtLogin = true
         static let annotationColorHex = "#FF3B30"
+        static let arrowWeight = ArrowWeight.regular
+        static let outlineColorHex = "#FFFFFF"
+        static let outlineWidth = OutlineWidth.medium
+        static let backgroundPadding = Background.defaultPadding
     }
 
     /// Registers defaults for every key except `launchAtLogin`, which must stay
@@ -56,8 +90,13 @@ nonisolated enum AppSettings {
             Key.maxLongSide: Default.maxLongSide,
             Key.compressionEnabled: Default.compressionEnabled,
             Key.jpegQuality: Default.jpegQuality,
+            Key.pngCompression: Default.pngCompression.rawValue,
             Key.copyToClipboard: Default.copyToClipboard,
             Key.annotationColorHex: Default.annotationColorHex,
+            Key.arrowWeight: Default.arrowWeight.rawValue,
+            Key.outlineColorHex: Default.outlineColorHex,
+            Key.outlineWidth: Default.outlineWidth.rawValue,
+            Key.backgroundPadding: Double(Default.backgroundPadding),
         ])
     }
 
@@ -77,6 +116,7 @@ nonisolated struct ExportSettings: Equatable, Sendable {
     var maxLongSide: Int
     var compressionEnabled: Bool
     var jpegQuality: Double
+    var pngCompression: PNGCompression = AppSettings.Default.pngCompression
     var copyToClipboard: Bool
 
     static func current(_ defaults: UserDefaults = .standard) -> ExportSettings {
@@ -90,6 +130,7 @@ nonisolated struct ExportSettings: Equatable, Sendable {
             maxLongSide: defaults.object(forKey: Key.maxLongSide) as? Int ?? Default.maxLongSide,
             compressionEnabled: defaults.object(forKey: Key.compressionEnabled) as? Bool ?? Default.compressionEnabled,
             jpegQuality: defaults.object(forKey: Key.jpegQuality) as? Double ?? Default.jpegQuality,
+            pngCompression: defaults.string(forKey: Key.pngCompression).flatMap(PNGCompression.init(rawValue:)) ?? Default.pngCompression,
             copyToClipboard: defaults.object(forKey: Key.copyToClipboard) as? Bool ?? Default.copyToClipboard
         )
     }

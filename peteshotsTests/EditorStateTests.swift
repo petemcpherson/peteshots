@@ -44,6 +44,48 @@ struct EditorStateTests {
         #expect(state.selectedID == annotation.id)
     }
 
+    @Test func backgroundIsOneUndoStep() {
+        let (state, undoManager) = makeState()
+        step(undoManager) { state.setBackground(.sunset) }
+        #expect(state.document.background?.gradient == .sunset)
+        #expect(state.document.background?.padding == state.backgroundPadding)
+
+        step(undoManager) { state.setBackground(nil) }
+        #expect(state.document.background == nil)
+
+        undoManager.undo()
+        #expect(state.document.background?.gradient == .sunset)
+        undoManager.undo()
+        #expect(state.document.background == nil)
+    }
+
+    @Test func paddingDragIsOneUndoStep() {
+        let (state, undoManager) = makeState()
+        let original = state.backgroundPadding
+        defer { state.setBackgroundPadding(original) }
+        step(undoManager) { state.setBackground(.mint) }
+        let before = state.document.background
+
+        step(undoManager) {
+            state.beginLiveChange()
+            state.setBackgroundPadding(0.1)
+            state.setBackgroundPadding(0.15)
+            state.endLiveChange()
+        }
+        #expect(state.document.background?.padding == 0.15)
+
+        undoManager.undo()
+        #expect(state.document.background == before)
+    }
+
+    @Test func paddingIsClamped() {
+        let (state, _) = makeState()
+        let original = state.backgroundPadding
+        defer { state.setBackgroundPadding(original) }
+        state.setBackgroundPadding(5)
+        #expect(state.backgroundPadding == Background.paddingRange.upperBound)
+    }
+
     @Test func undoAndRedoRestoreSnapshots() {
         let (state, undoManager) = makeState()
         let annotation = blur(CGRect(x: 1, y: 1, width: 10, height: 10))
@@ -99,22 +141,27 @@ struct EditorStateTests {
         .arrow(ArrowAnnotation(start: .zero, end: CGPoint(x: 10, y: 10), colorHex: "#FF0000", strokeWidth: 3))
     }
 
-    /// Runs `body`, then restores the saved annotation color.
-    private func keepingSavedColor(_ body: () -> Void) {
-        let key = AppSettings.Key.annotationColorHex
-        let saved = UserDefaults.standard.object(forKey: key)
-        defer { UserDefaults.standard.set(saved, forKey: key) }
+    /// Runs `body`, then restores the saved annotation color and style.
+    private func keepingSavedStyle(_ body: () -> Void) {
+        let keys = [
+            AppSettings.Key.annotationColorHex, AppSettings.Key.arrowWeight,
+            AppSettings.Key.outlineColorHex, AppSettings.Key.outlineWidth,
+        ]
+        let saved = keys.map { UserDefaults.standard.object(forKey: $0) }
+        defer {
+            for (key, value) in zip(keys, saved) { UserDefaults.standard.set(value, forKey: key) }
+        }
         body()
     }
 
     @Test func arrowStrokeWidthIsClamped() {
         let (state, _) = makeState()
-        // The long side is 40 px, so 0.4% is below the 3 px minimum.
-        #expect(state.arrowStrokeWidth == 3)
+        // The long side is 40 px, so 0.8% is below the 4 px minimum.
+        #expect(state.baseArrowStrokeWidth == 4)
     }
 
     @Test func colorChangeRecolorsSelectionAsOneUndoStep() {
-        keepingSavedColor {
+        keepingSavedStyle {
             let (state, undoManager) = makeState()
             let annotation = arrow()
             step(undoManager) { state.place(annotation) }
@@ -137,7 +184,7 @@ struct EditorStateTests {
     }
 
     @Test func colorChangeWithoutSelectionAddsNoUndoStep() {
-        keepingSavedColor {
+        keepingSavedStyle {
             let (state, undoManager) = makeState()
             state.setColor("#123456")
             #expect(state.colorHex == "#123456")
@@ -146,11 +193,64 @@ struct EditorStateTests {
     }
 
     @Test func colorChangeSkipsBlur() {
-        keepingSavedColor {
+        keepingSavedStyle {
             let (state, undoManager) = makeState()
             let annotation = blur(CGRect(x: 0, y: 0, width: 10, height: 10))
             step(undoManager) { state.place(annotation) }
             state.setColor("#123456")
+            #expect(state.document.annotations == [annotation])
+            undoManager.undo()
+            #expect(state.document.annotations.isEmpty)
+        }
+    }
+
+    @Test func arrowWeightRestylesSelectedArrowAsOneUndoStep() {
+        keepingSavedStyle {
+            let (state, undoManager) = makeState()
+            state.setArrowWeight(.regular)
+            let annotation = arrow()
+            step(undoManager) { state.place(annotation) }
+
+            step(undoManager) { state.setArrowWeight(.heavy) }
+            #expect(state.arrowStrokeWidth == state.baseArrowStrokeWidth * 2)
+            guard case .arrow(let heavy)? = state.selectedAnnotation else { Issue.record("no arrow"); return }
+            #expect(heavy.strokeWidth == state.arrowStrokeWidth)
+
+            undoManager.undo()
+            #expect(state.document.annotations == [annotation])
+        }
+    }
+
+    @Test func outlineChangesRestyleSelection() {
+        keepingSavedStyle {
+            let (state, undoManager) = makeState()
+            state.setOutlineWidth(.off)
+            state.setOutlineColor("#FFFFFF")
+            let annotation = arrow()
+            step(undoManager) { state.place(annotation) }
+
+            step(undoManager) { state.setOutlineWidth(.thick) }
+            step(undoManager) { state.setOutlineColor("#000000") }
+            // A quick second color change joins the first color step.
+            state.setOutlineColor("#111111")
+            #expect(state.outline == Outline(colorHex: "#111111", width: .thick))
+            guard case .arrow(let outlined)? = state.selectedAnnotation else { Issue.record("no arrow"); return }
+            #expect(outlined.outline == state.outline)
+
+            undoManager.undo()
+            guard case .arrow(let undone)? = state.selectedAnnotation else { Issue.record("no arrow"); return }
+            #expect(undone.outline.width == .thick)
+            #expect(undone.outline == Outline(colorHex: "#FFFFFF", width: .thick))
+        }
+    }
+
+    @Test func outlineChangeSkipsBlur() {
+        keepingSavedStyle {
+            let (state, undoManager) = makeState()
+            let annotation = blur(CGRect(x: 0, y: 0, width: 10, height: 10))
+            step(undoManager) { state.place(annotation) }
+            state.setOutlineWidth(.thin)
+            state.setArrowWeight(.bold)
             #expect(state.document.annotations == [annotation])
             undoManager.undo()
             #expect(state.document.annotations.isEmpty)
@@ -165,7 +265,7 @@ struct EditorStateTests {
 
     @Test func defaultFontSizeIsClamped() {
         let (state, _) = makeState()
-        #expect(state.defaultFontSize == 14)
+        #expect(state.defaultFontSize == 18)
     }
 
     @Test func newTextEditIsOneUndoStep() {

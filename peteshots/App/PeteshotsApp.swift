@@ -10,8 +10,10 @@ struct PeteshotsApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     var body: some Scene {
-        MenuBarExtra("Peteshots", systemImage: "camera.viewfinder") {
+        MenuBarExtra {
             MenuContent()
+        } label: {
+            Image(nsImage: MenuBarIcon.image)
         }
 
         Settings {

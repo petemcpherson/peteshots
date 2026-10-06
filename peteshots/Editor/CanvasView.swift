@@ -102,9 +102,12 @@ final class CanvasView: NSView {
 
     // MARK: - Transform
 
-    /// The image area shown: the full image in crop mode, otherwise the crop rect.
+    /// The area shown, in image px: the full image in crop mode, otherwise the
+    /// crop rect plus any background padding (spec §5.6b).
     var visibleImageRect: CGRect {
-        state.tool == .crop ? state.imageBounds : state.document.cropRect
+        if state.tool == .crop { return state.imageBounds }
+        let crop = state.document.cropRect
+        return state.document.background?.canvasRect(for: crop) ?? crop
     }
 
     /// View points per image pixel. Never larger than 1:1 on the capture screen.
@@ -168,12 +171,12 @@ final class CanvasView: NSView {
         // From here on, drawing uses image pixels with a top-left origin.
         context.clip(to: visible)
         context.interpolationQuality = .high
-        drawBaseImage(in: context)
-        // The inline editor draws the text being edited.
-        let annotations = state.document.annotations.filter { $0.id != state.editingTextID }
-        AnnotationDrawing.draw(annotations, base: state.baseImage, in: context)
-        if let draft {
-            AnnotationDrawing.draw([draft], base: state.baseImage, in: context)
+        if state.tool != .crop, let background = state.document.background {
+            BackgroundDrawing.draw(background, crop: state.document.cropRect, in: context) {
+                drawContent(in: context)
+            }
+        } else {
+            drawContent(in: context)
         }
         context.restoreGState()
 
@@ -198,6 +201,21 @@ final class CanvasView: NSView {
 
         strokeOutline(of: crop)
         drawHandles(at: Geometry.RectHandle.allCases.map { $0.point(in: crop) })
+    }
+
+    /// The base image, annotations, and draft, in image pixels.
+    private func drawContent(in context: CGContext) {
+        drawBaseImage(in: context)
+        // The inline editor draws the text being edited.
+        let annotations = state.document.annotations.filter { $0.id != state.editingTextID }
+        AnnotationDrawing.draw(annotations, base: state.baseImage, in: context)
+        if let id = state.editingTextID, case .text(let text)? = state.document.annotation(withID: id) {
+            // The editor shows the fill; its outline draws here, under it.
+            AnnotationDrawing.drawText(text, outlineOnly: true, in: context)
+        }
+        if let draft {
+            AnnotationDrawing.draw([draft], base: state.baseImage, in: context)
+        }
     }
 
     private func drawBaseImage(in context: CGContext) {
@@ -393,7 +411,10 @@ final class CanvasView: NSView {
     private func makeDraft(tool: Tool, from start: CGPoint, to end: CGPoint) -> Annotation? {
         switch tool {
         case .arrow:
-            .arrow(ArrowAnnotation(start: start, end: end, colorHex: state.colorHex, strokeWidth: state.arrowStrokeWidth))
+            .arrow(ArrowAnnotation(
+                start: start, end: end, colorHex: state.colorHex,
+                strokeWidth: state.arrowStrokeWidth, outline: state.outline
+            ))
         case .blur:
             .blur(BlurAnnotation(rect: Geometry.rect(from: start, to: end)))
         case .select, .text, .crop:
@@ -427,9 +448,9 @@ final class CanvasView: NSView {
     private func beginTextEditing(newTextAt point: CGPoint) {
         let fontSize = state.defaultFontSize
         let lineHeight = fontSize * TextLayout.lineHeightMultiple
-        let visible = visibleImageRect
-        let origin = Geometry.clampPoint(CGPoint(x: point.x, y: point.y - lineHeight / 2), to: visible)
-        let text = TextAnnotation(origin: origin, string: "", fontSize: fontSize, colorHex: state.colorHex)
+        // Not the background padding: text there would be clipped.
+        let origin = Geometry.clampPoint(CGPoint(x: point.x, y: point.y - lineHeight / 2), to: state.document.cropRect)
+        let text = TextAnnotation(origin: origin, string: "", fontSize: fontSize, colorHex: state.colorHex, outline: state.outline)
         beginTextEditing(text, isNew: true)
     }
 

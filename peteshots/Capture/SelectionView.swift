@@ -7,7 +7,8 @@ import AppKit
 
 /// Draws the dim, the selection, and the size label for one screen.
 final class SelectionView: NSView {
-    private unowned let overlay: SelectionOverlay
+    /// Weak: AppKit can deliver a queued event after the overlay is released.
+    private weak var overlay: SelectionOverlay?
 
     init(frame: CGRect, overlay: SelectionOverlay) {
         self.overlay = overlay
@@ -61,39 +62,39 @@ final class SelectionView: NSView {
     }
 
     override func mouseDown(with event: NSEvent) {
-        overlay.mouseDown(at: globalPoint(for: event))
+        overlay?.mouseDown(at: globalPoint(for: event))
     }
 
     override func mouseDragged(with event: NSEvent) {
-        overlay.mouseDragged(to: globalPoint(for: event), square: event.modifierFlags.contains(.shift))
+        overlay?.mouseDragged(to: globalPoint(for: event), square: event.modifierFlags.contains(.shift))
     }
 
     override func mouseMoved(with event: NSEvent) {
-        overlay.mouseMoved(to: globalPoint(for: event))
+        overlay?.mouseMoved(to: globalPoint(for: event))
     }
 
     override func mouseUp(with event: NSEvent) {
-        overlay.mouseUp(at: globalPoint(for: event), square: event.modifierFlags.contains(.shift))
+        overlay?.mouseUp(at: globalPoint(for: event), square: event.modifierFlags.contains(.shift))
     }
 
     override func rightMouseDown(with event: NSEvent) {
-        overlay.cancel()
+        overlay?.cancel()
     }
 
     override func flagsChanged(with event: NSEvent) {
-        overlay.modifiersChanged(square: event.modifierFlags.contains(.shift))
+        overlay?.modifiersChanged(square: event.modifierFlags.contains(.shift))
     }
 
     override func keyDown(with event: NSEvent) {
         if event.keyCode == 53 {
-            overlay.cancel()
+            overlay?.cancel()
         } else {
             super.keyDown(with: event)
         }
     }
 
     override func cancelOperation(_ sender: Any?) {
-        overlay.cancel()
+        overlay?.cancel()
     }
 
     // MARK: - Drawing
@@ -102,7 +103,7 @@ final class SelectionView: NSView {
         NSColor.black.withAlphaComponent(0.2).setFill()
         bounds.fill()
 
-        guard let selection = overlay.selectionRect else { return }
+        guard let selection = overlay?.selectionRect else { return }
         let local = toLocal(selection)
         guard local.intersects(bounds) else { return }
 
@@ -118,7 +119,7 @@ final class SelectionView: NSView {
     }
 
     private func drawSizeLabel(for selection: CGRect) {
-        guard let cursor = overlay.cursorLocation, screenFrame.contains(cursor) else { return }
+        guard let cursor = overlay?.cursorLocation, screenFrame.contains(cursor) else { return }
 
         let scale = window?.backingScaleFactor ?? 1
         let width = Int((selection.width * scale).rounded())

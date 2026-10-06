@@ -157,6 +157,23 @@ struct PNGQuantizerTests {
         #expect(abs(Int(before.g) - Int(after.g)) < 24)
         #expect(abs(Int(before.b) - Int(after.b)) < 24)
     }
+
+    @Test func levelsCapPaletteSize() throws {
+        let image = ExportTestImages.gradient(width: 300, height: 200)
+        for level in PNGCompression.allCases {
+            let quantized = try #require(PNGQuantizer.quantize(image, maxColors: level.maxColors, dither: level.dither))
+            let space = try #require(quantized.colorSpace)
+            #expect(space.model == .indexed)
+            #expect(space.colorTable?.count ?? .max <= level.maxColors * 3)
+        }
+    }
+
+    @Test func strongerLevelsShrinkFile() throws {
+        let image = ExportTestImages.noise(width: 200, height: 150)
+        let light = try ImageEncoder.encode(image, format: .png, compressed: true, jpegQuality: 0.8, pngCompression: .light)
+        let strong = try ImageEncoder.encode(image, format: .png, compressed: true, jpegQuality: 0.8, pngCompression: .strong)
+        #expect(strong.count < light.count)
+    }
 }
 
 struct RendererTests {
@@ -183,6 +200,34 @@ struct RendererTests {
         #expect(onLine.r > 240 && onLine.g < 20 && onLine.b < 20)
         let below = ExportTestImages.pixel(output, x: 40, y: 80)
         #expect(below.r > 240 && below.g > 240 && below.b > 240)
+    }
+
+    @Test func backgroundAddsPaddingAroundCrop() throws {
+        let base = ExportTestImages.solid(width: 200, height: 100)
+        var document = EditorDocument(imageSize: CGSize(width: 200, height: 100))
+        // 10% of the 200 px long side: 20 px on each side.
+        document.background = Background(gradient: .midnight, padding: 0.1)
+        let output = try #require(Renderer.flatten(base: base, document: document))
+        #expect(output.width == 240)
+        #expect(output.height == 140)
+
+        let corner = ExportTestImages.pixel(output, x: 1, y: 1)
+        #expect(corner.r < 60 && corner.g < 60 && corner.b < 60)
+        let center = ExportTestImages.pixel(output, x: 120, y: 70)
+        #expect(center.r > 240 && center.g > 240 && center.b > 240)
+        // The screenshot's corner is rounded, so its corner pixel is not white.
+        let roundedCorner = ExportTestImages.pixel(output, x: 20, y: 20)
+        #expect(roundedCorner.r < 200)
+    }
+
+    @Test func backgroundPaddingFollowsCrop() {
+        let base = ExportTestImages.solid(width: 200, height: 100)
+        var document = EditorDocument(imageSize: CGSize(width: 200, height: 100))
+        document.cropRect = CGRect(x: 20, y: 10, width: 100, height: 50)
+        document.background = Background(gradient: .ocean, padding: 0.1)
+        let output = Renderer.flatten(base: base, document: document)
+        #expect(output?.width == 120)
+        #expect(output?.height == 70)
     }
 
     @Test func pipelineWritesFile() throws {

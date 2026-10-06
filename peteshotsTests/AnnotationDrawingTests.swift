@@ -54,6 +54,48 @@ struct AnnotationDrawingTests {
         #expect(headEdge.r > 200 && headEdge.g < 60)
     }
 
+    @Test func arrowOutlineSurroundsLine() {
+        let base = makeImage(width: 100, height: 60)
+        let context = makeFlippedContext(width: 100, height: 60)
+        context.draw(base, in: CGRect(x: 0, y: 0, width: 100, height: 60))
+        let arrow = ArrowAnnotation(
+            start: CGPoint(x: 10, y: 30), end: CGPoint(x: 90, y: 30), colorHex: "#FF0000", strokeWidth: 8,
+            outline: Outline(colorHex: "#0000FF", width: .thick)
+        )
+        AnnotationDrawing.draw([.arrow(arrow)], base: base, in: context)
+
+        // The line is 8 px wide with a 4 px outline on each side.
+        let onLine = pixel(context, x: 40, y: 30)
+        #expect(onLine.r > 240 && onLine.b < 20)
+        let outline = pixel(context, x: 40, y: 36)
+        #expect(outline.b > 240 && outline.r < 20)
+        let outside = pixel(context, x: 40, y: 42)
+        #expect(outside.r > 240 && outside.g > 240 && outside.b > 240)
+    }
+
+    @Test func textOutlineDrawsOutsideGlyphs() {
+        let base = makeImage(width: 120, height: 80)
+        let context = makeFlippedContext(width: 120, height: 80)
+        context.draw(base, in: CGRect(x: 0, y: 0, width: 120, height: 80))
+        let text = TextAnnotation(
+            origin: CGPoint(x: 10, y: 10), string: "I", fontSize: 60, colorHex: "#FF0000",
+            outline: Outline(colorHex: "#0000FF", width: .thick)
+        )
+        AnnotationDrawing.draw([.text(text)], base: base, in: context)
+
+        var sawFill = false
+        var sawOutline = false
+        for y in 10..<80 {
+            for x in 0..<120 {
+                let p = pixel(context, x: x, y: y)
+                if p.r > 240 && p.b < 20 { sawFill = true }
+                if p.b > 240 && p.r < 20 { sawOutline = true }
+            }
+        }
+        #expect(sawFill)
+        #expect(sawOutline)
+    }
+
     @Test func blurMixesPixelsInsideRegionOnly() {
         let base = makeImage(width: 200, height: 100, split: true)
         let context = makeFlippedContext(width: 200, height: 100)

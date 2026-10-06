@@ -22,6 +22,7 @@ struct SettingsView: View {
     @AppStorage(Key.maxLongSide) private var maxLongSide = Default.maxLongSide
     @AppStorage(Key.compressionEnabled) private var compressionEnabled = Default.compressionEnabled
     @AppStorage(Key.jpegQuality) private var jpegQuality = Default.jpegQuality
+    @AppStorage(Key.pngCompression) private var pngCompression = Default.pngCompression.rawValue
     @AppStorage(Key.copyToClipboard) private var copyToClipboard = Default.copyToClipboard
     @AppStorage(Key.launchAtLogin) private var launchAtLogin = Default.launchAtLogin
 
@@ -29,6 +30,11 @@ struct SettingsView: View {
     @State private var loginStatus: SMAppService.Status = .notRegistered
 
     private var imageFormat: ImageFormat { ImageFormat(rawValue: format) ?? Default.format }
+
+    private var pngCompressionCaption: String {
+        let level = PNGCompression(rawValue: pngCompression) ?? Default.pngCompression
+        return level.dither ? "\(level.maxColors) colors, dithered." : "\(level.maxColors) colors, no dithering. Smallest files."
+    }
 
     var body: some View {
         Form {
@@ -78,7 +84,20 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Toggle("Compression", isOn: $compressionEnabled)
                     if imageFormat == .png {
-                        Text("Reduces PNGs to 256 colors. Skipped when it would not save space.")
+                        Text("Reduces PNGs to a color palette. Skipped when it would not save space.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                if imageFormat == .png && compressionEnabled {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Picker("PNG compression:", selection: $pngCompression) {
+                            ForEach(PNGCompression.allCases, id: \.self) { level in
+                                Text(level.title).tag(level.rawValue)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        Text(pngCompressionCaption)
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -86,7 +105,7 @@ struct SettingsView: View {
                 if imageFormat == .jpeg && compressionEnabled {
                     LabeledContent("JPEG quality:") {
                         HStack {
-                            Slider(value: $jpegQuality, in: 0.60...0.95, step: 0.05)
+                            Slider(value: $jpegQuality, in: 0.30...0.95, step: 0.05)
                             Text("\(Int((jpegQuality * 100).rounded()))%")
                                 .monospacedDigit()
                                 .frame(width: 40, alignment: .trailing)

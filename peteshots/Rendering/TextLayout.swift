@@ -44,6 +44,17 @@ nonisolated enum TextLayout {
         ]
     }
 
+    /// Attributes that stroke the glyph edges only, for the outline drawn
+    /// behind the fill. The stroke is centered on the edge, so it is twice the
+    /// visible outline width.
+    static func outlineAttributes(fontSize: CGFloat, outline: Outline, shadowBlur: CGFloat) -> [NSAttributedString.Key: Any] {
+        var result = attributes(fontSize: fontSize, colorHex: outline.colorHex, shadowBlur: shadowBlur)
+        result[.strokeColor] = result[.foregroundColor]
+        // A positive stroke width (percent of the font size) strokes without filling.
+        result[.strokeWidth] = 2 * outline.width.textFraction * 100
+        return result
+    }
+
     /// Lines break only at Return, so the count is the number of newlines plus one.
     static func lineCount(of string: String) -> Int {
         string.reduce(1) { $1.isNewline ? $0 + 1 : $0 }

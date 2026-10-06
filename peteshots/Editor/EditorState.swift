@@ -41,6 +41,29 @@ enum Tool: CaseIterable {
     }
 }
 
+/// Arrow stroke weight, as a multiple of the size-based default width.
+nonisolated enum ArrowWeight: String, CaseIterable, Sendable {
+    case thin, regular, bold, heavy
+
+    var title: String {
+        switch self {
+        case .thin: "Thin"
+        case .regular: "Regular"
+        case .bold: "Bold"
+        case .heavy: "Heavy"
+        }
+    }
+
+    var multiplier: CGFloat {
+        switch self {
+        case .thin: 0.6
+        case .regular: 1
+        case .bold: 1.5
+        case .heavy: 2
+        }
+    }
+}
+
 /// State of one editor window: the image, the document, the tool, the
 /// selection, and snapshot undo (spec §5.9).
 @Observable
@@ -70,6 +93,10 @@ final class EditorState {
     /// The crop rect being adjusted while the crop tool is active (spec §5.7).
     private(set) var cropDraft: CGRect?
     private(set) var colorHex: String
+    private(set) var arrowWeight: ArrowWeight
+    private(set) var outline: Outline
+    /// Padding for a newly chosen background, saved between sessions (spec §5.6b).
+    private(set) var backgroundPadding: CGFloat
 
     /// True while the export runs. Save is disabled until it ends.
     private(set) var isSaving = false
@@ -83,8 +110,8 @@ final class EditorState {
 
     /// The document when the current live drag started.
     @ObservationIgnored private var liveChangeStart: EditorDocument?
-    /// The annotation whose color is changing and the time of the last change.
-    /// Continuous color panel updates coalesce into one undo step.
+    /// The annotation whose color or outline color is changing and the time of
+    /// the last change. Continuous color panel updates coalesce into one undo step.
     @ObservationIgnored private var colorChange: (id: Annotation.ID, time: Date)?
 
     /// A pause longer than this starts a new color undo step.
@@ -100,6 +127,19 @@ final class EditorState {
         self.document = EditorDocument(imageSize: CGSize(width: baseImage.width, height: baseImage.height))
         self.colorHex = UserDefaults.standard.string(forKey: AppSettings.Key.annotationColorHex)
             ?? AppSettings.Default.annotationColorHex
+        let defaults = UserDefaults.standard
+        self.arrowWeight = defaults.string(forKey: AppSettings.Key.arrowWeight).flatMap(ArrowWeight.init(rawValue:))
+            ?? AppSettings.Default.arrowWeight
+        self.outline = Outline(
+            colorHex: defaults.string(forKey: AppSettings.Key.outlineColorHex) ?? AppSettings.Default.outlineColorHex,
+            width: defaults.string(forKey: AppSettings.Key.outlineWidth).flatMap(OutlineWidth.init(rawValue:))
+                ?? AppSettings.Default.outlineWidth
+        )
+        let padding = defaults.object(forKey: AppSettings.Key.backgroundPadding) as? Double
+        self.backgroundPadding = Geometry.clamp(
+            padding.map { CGFloat($0) } ?? AppSettings.Default.backgroundPadding,
+            Background.paddingRange.lowerBound, Background.paddingRange.upperBound
+        )
     }
 
     var imageBounds: CGRect {
@@ -110,14 +150,19 @@ final class EditorState {
         selectedID.flatMap { document.annotation(withID: $0) }
     }
 
-    /// Arrow stroke width: 0.4% of the image's long side, clamped to 3–10 px (spec §5.4).
-    var arrowStrokeWidth: CGFloat {
-        Geometry.clamp(0.004 * CGFloat(max(baseImage.width, baseImage.height)), 3, 10)
+    /// Regular arrow stroke width: 0.8% of the image's long side, clamped to 4–20 px (spec §5.4).
+    var baseArrowStrokeWidth: CGFloat {
+        Geometry.clamp(0.008 * CGFloat(max(baseImage.width, baseImage.height)), 4, 20)
     }
 
-    /// Default font size: 3% of the image's long side, clamped to 14–48 px (spec §5.6).
+    /// Stroke width for new arrows: the regular width times the arrow weight.
+    var arrowStrokeWidth: CGFloat {
+        baseArrowStrokeWidth * arrowWeight.multiplier
+    }
+
+    /// Default font size: 4.5% of the image's long side, clamped to 18–72 px (spec §5.6).
     var defaultFontSize: CGFloat {
-        Geometry.clamp(0.03 * CGFloat(max(baseImage.width, baseImage.height)), 14, 48)
+        Geometry.clamp(0.045 * CGFloat(max(baseImage.width, baseImage.height)), 18, 72)
     }
 
     // MARK: - Changes
@@ -170,26 +215,80 @@ final class EditorState {
         guard hex != colorHex else { return }
         colorHex = hex
         UserDefaults.standard.set(hex, forKey: AppSettings.Key.annotationColorHex)
+        restyleSelection(coalescing: true) { $0.withColor(hex) }
+    }
 
-        guard let selectedID, selectedAnnotation?.colorHex != nil else { return }
-        let recolor: (inout EditorDocument) -> Void = { document in
-            document.updateAnnotation(withID: selectedID) { $0 = $0.withColor(hex) }
+    /// Sets the weight for new arrows and saves it as the default. A selected
+    /// arrow takes the new weight.
+    func setArrowWeight(_ weight: ArrowWeight) {
+        guard weight != arrowWeight else { return }
+        arrowWeight = weight
+        UserDefaults.standard.set(weight.rawValue, forKey: AppSettings.Key.arrowWeight)
+        let width = arrowStrokeWidth
+        restyleSelection(coalescing: false) { $0.withStrokeWidth(width) }
+    }
+
+    /// Sets the outline color and saves it as the default. A selected arrow or
+    /// text annotation takes the new outline.
+    func setOutlineColor(_ hex: String) {
+        guard hex != outline.colorHex else { return }
+        outline.colorHex = hex
+        UserDefaults.standard.set(hex, forKey: AppSettings.Key.outlineColorHex)
+        let outline = outline
+        restyleSelection(coalescing: true) { $0.withOutline(outline) }
+    }
+
+    /// Sets the outline width and saves it as the default. A selected arrow or
+    /// text annotation takes the new outline.
+    func setOutlineWidth(_ width: OutlineWidth) {
+        guard width != outline.width else { return }
+        outline.width = width
+        UserDefaults.standard.set(width.rawValue, forKey: AppSettings.Key.outlineWidth)
+        let outline = outline
+        restyleSelection(coalescing: false) { $0.withOutline(outline) }
+    }
+
+    // MARK: - Background
+
+    /// Sets the gradient behind the screenshot as one undo step. Nil removes it.
+    func setBackground(_ gradient: BackgroundGradient?) {
+        let padding = backgroundPadding
+        commit { $0.background = gradient.map { Background(gradient: $0, padding: padding) } }
+    }
+
+    /// Sets the background padding and saves it as the default. Call
+    /// `beginLiveChange` before a slider drag and `endLiveChange` after it, so
+    /// the drag is one undo step.
+    func setBackgroundPadding(_ padding: CGFloat) {
+        let padding = Geometry.clamp(padding, Background.paddingRange.lowerBound, Background.paddingRange.upperBound)
+        backgroundPadding = padding
+        UserDefaults.standard.set(Double(padding), forKey: AppSettings.Key.backgroundPadding)
+        guard document.background != nil else { return }
+        updateLive { $0.background?.padding = padding }
+    }
+
+    /// Applies a style change to the selected annotation as one undo step.
+    /// With `coalescing`, quick repeated changes (color panel drags) share one step.
+    private func restyleSelection(coalescing: Bool, _ restyle: @escaping (Annotation) -> Annotation) {
+        guard let selectedID, let annotation = selectedAnnotation, restyle(annotation) != annotation else { return }
+        let change: (inout EditorDocument) -> Void = { document in
+            document.updateAnnotation(withID: selectedID) { $0 = restyle($0) }
         }
         if editingTextID == selectedID {
             // Part of the text edit's undo step.
-            updateLive(recolor)
+            updateLive(change)
             return
         }
         let now = Date()
-        if let colorChange, colorChange.id == selectedID,
+        if coalescing, let colorChange, colorChange.id == selectedID,
            now.timeIntervalSince(colorChange.time) < Self.colorCoalesceInterval {
             // Same color session: the undo step registered by the first change
             // restores the original color, and redo returns the latest one.
-            updateLive(recolor)
+            updateLive(change)
         } else {
-            commit(recolor)
+            commit(change)
         }
-        colorChange = (selectedID, now)
+        colorChange = coalescing ? (selectedID, now) : nil
     }
 
     /// Registers an undo step to `oldDocument`, then replaces the document.
@@ -310,7 +409,11 @@ final class EditorState {
         }
     }
 
-    func cancel() { onCancel() }
+    /// Ignored while a save runs, so Esc cannot drop an export in flight.
+    func cancel() {
+        guard !isSaving else { return }
+        onCancel()
+    }
 
     /// Esc cancels crop mode first, then the whole editor (spec §5.7).
     func escape() {
