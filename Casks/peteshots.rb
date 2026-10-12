@@ -1,6 +1,6 @@
 cask "peteshots" do
-  version "1.0.0"
-  sha256 "bf0b02201313e410adf7cf9a83ee62ca5192a3b16cdff25408bcea27bb7a17e7"
+  version "1.1.0"
+  sha256 "2fa0605b6438617c8eec7779c6209a4575d0b746dd0d7a80a18f6ecb28c22b78"
 
   url "https://github.com/petemcpherson/peteshots/releases/download/v#{version}/Peteshots-#{version}.dmg"
   name "Peteshots"

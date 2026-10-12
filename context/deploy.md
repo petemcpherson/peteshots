@@ -42,7 +42,7 @@ To do before the first release:
 - [x] `Casks/peteshots.rb` created.
 - [x] README install commands use the tap URL form above.
 - [x] 1.0.0 (build 1) built, notarized (Accepted), stapled. Gatekeeper: `source=Notarized Developer ID`. Universal (`x86_64 arm64`).
-- [ ] Publish 1.0.0: tag, GitHub Release, push cask, verify with brew (Step 4.5 onward).
+- [x] Publish 1.0.0: tag, GitHub Release, push cask, verify with brew.
 
 Decided and not changing:
 
@@ -313,3 +313,4 @@ Use the long form. Two reasons:
 | Version | Build | Date | Notes |
 |---|---|---|---|
 | 1.0.0 | 1 | 2026-10-11 | First public release. |
+| 1.1.0 | 2 | 2026-10-11 | Arrow/blur tools stay active after placing; arrows and text allowed in background padding. Dev builds use a separate bundle ID. |
