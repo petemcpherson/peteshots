@@ -50,7 +50,8 @@ Peteshots does all of that in one go. Press **⌘⇧A**, drag a box, add an arro
 ### Homebrew (recommended)
 
 ```sh
-brew install --cask petemcpherson/tap/peteshots
+brew tap petemcpherson/peteshots https://github.com/petemcpherson/peteshots
+brew install --cask petemcpherson/peteshots/peteshots
 ```
 
 To update later:

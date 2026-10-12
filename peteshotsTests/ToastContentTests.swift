@@ -5,7 +5,7 @@
 
 import Foundation
 import Testing
-@testable import peteshots
+@testable import Peteshots
 
 struct ToastContentTests {
     private func result(

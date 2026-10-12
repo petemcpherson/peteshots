@@ -1,6 +1,6 @@
 import CoreGraphics
 import Testing
-@testable import peteshots
+@testable import Peteshots
 
 struct GeometryTests {
     @Test func distanceToSegmentInteriorAndEnds() {

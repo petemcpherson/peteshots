@@ -519,7 +519,7 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 6.0;
-				TEST_TARGET_NAME = peteshots;
+				TEST_TARGET_NAME = Peteshots;
 			};
 			name = Debug;
 		};
@@ -538,7 +538,7 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 6.0;
-				TEST_TARGET_NAME = peteshots;
+				TEST_TARGET_NAME = Peteshots;
 			};
 			name = Release;
 		};

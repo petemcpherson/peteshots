@@ -1,6 +1,6 @@
 import AppKit
 import Testing
-@testable import peteshots
+@testable import Peteshots
 
 @MainActor
 struct EditorStateTests {

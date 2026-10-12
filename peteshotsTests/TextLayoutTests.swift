@@ -1,6 +1,6 @@
 import CoreGraphics
 import Testing
-@testable import peteshots
+@testable import Peteshots
 
 struct TextLayoutTests {
     private func text(_ string: String, fontSize: CGFloat = 20) -> TextAnnotation {

@@ -2,7 +2,7 @@ import CoreGraphics
 import Foundation
 import ImageIO
 import Testing
-@testable import peteshots
+@testable import Peteshots
 
 struct FileNamerTests {
     private func date(_ year: Int, _ month: Int, _ day: Int, _ hour: Int, _ minute: Int) -> Date {

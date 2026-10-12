@@ -1,6 +1,6 @@
 import CoreGraphics
 import Testing
-@testable import peteshots
+@testable import Peteshots
 
 struct AnnotationDrawingTests {
     /// A white sRGB image, or a left-black/right-white split.

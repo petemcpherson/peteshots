@@ -1,7 +1,7 @@
 import CoreGraphics
 import Foundation
 import Testing
-@testable import peteshots
+@testable import Peteshots
 
 /// Edge cases from spec §11 that can run without a display.
 struct EdgeCaseTests {

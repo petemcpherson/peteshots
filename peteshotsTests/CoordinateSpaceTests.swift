@@ -1,6 +1,6 @@
 import CoreGraphics
 import Testing
-@testable import peteshots
+@testable import Peteshots
 
 struct CoordinateSpaceTests {
     private let primary = CGRect(x: 0, y: 0, width: 1512, height: 982)

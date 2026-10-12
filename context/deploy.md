@@ -1,262 +1,293 @@
 # Deploy: public release + Homebrew install
 
-Goal: anyone can install Peteshots with one command, like Vorssaint:
+Peteshots ships as a signed, notarized DMG on GitHub Releases. Users install and update it with Homebrew, from a cask that lives **in this repo** (`Casks/peteshots.rb`). There is no separate `homebrew-tap` repo.
+
+This is the same model used for PeteKM. The general playbook is in `context/MACOS-HOMEBREW-DISTRIBUTION-GUIDE.md`. This file has the Peteshots-specific values and status.
+
+What users run:
 
 ```sh
-brew install --cask petemcpherson/tap/peteshots
+brew tap petemcpherson/peteshots https://github.com/petemcpherson/peteshots
+brew install --cask petemcpherson/peteshots/peteshots
 ```
 
-…or download a DMG from the GitHub Releases page.
+Then `brew upgrade` forever after.
 
-## How Vorssaint does it (and what we copy)
-
-Vorssaint's pipeline:
-
-1. Build the `.app`, signed with a **Developer ID Application** certificate.
-2. **Notarize** it with Apple (`xcrun notarytool`) and **staple** the ticket.
-3. Package it in a DMG (`Vorssaint-<version>.dmg`), then notarize and staple the DMG too.
-4. Upload the DMG to a **GitHub Release** tagged `v<version>`.
-5. A Homebrew **cask** (a small Ruby file) points to that release URL with a `sha256`.
-
-One difference: Vorssaint's cask lives in the **official** `homebrew/cask` repo, which is why their command is just `brew install --cask vorssaint`. Homebrew only accepts popular apps there (it checks GitHub stars, forks, and watchers). Peteshots has 0 stars today, so it would be rejected.
-
-The fix is a **personal tap**: your own GitHub repo named `homebrew-tap`. It works the same way. The only cost is a slightly longer install command. Move to the official repo later (Step 10) once Peteshots is popular enough.
-
-Also: Homebrew now refuses casks for apps that fail Gatekeeper. The app must be signed and notarized. Unsigned builds are not an option.
-
-## What you already have
-
-- Public repo: `github.com/petemcpherson/peteshots`
-- **Developer ID Application: Peter McPherson (A2T9Q78M27)** certificate, already in your keychain
-- Hardened Runtime on, App Sandbox off (fine for Developer ID distribution)
-- MIT license, README
-- No network code, so there is no in-app updater. Homebrew handles updates (`brew upgrade`).
+```
+Peteshots.xcodeproj ──scripts/release.sh──▶ build/Peteshots-<v>.dmg  (Developer ID signed, notarized, stapled)
+                                                   │
+                                       gh release create v<v>
+                                                   ▼
+            GitHub Release v<v>  ◀── download URL ──  Casks/peteshots.rb  (version + sha256)
+```
 
 ---
 
-## Step 1 — Prepare the app for release
+## Status (checked 2026-10-11)
 
-1. **Rename the built app (recommended).** Today `PRODUCT_NAME = $(TARGET_NAME)`, so the app is `peteshots.app` (lowercase). In Xcode, set the target's **Product Name** to `Peteshots` so users see `Peteshots.app` in `/Applications`.
-   - Note: the bundle ID stays `com.peteshots.peteshots`. Do not change it after the first release, or users lose their Screen Recording permission and settings.
-2. **Set the version.** In the target's General tab, set **Version** (`MARKETING_VERSION`) to `1.0.0` and **Build** (`CURRENT_PROJECT_VERSION`) to `1`. Raise both on every release.
-3. **Check the minimum macOS version.** It is currently `26.2`, so users on macOS 15 and older cannot install. Lower it only if the code supports older systems. Whatever you choose goes into the cask in Step 6.
-4. **App icon.** Make sure `AppIcon.appiconset` has real artwork. It shows in Finder, the DMG, and Homebrew listings.
-5. **Commit everything.** Releases must come from a clean `main`.
+Done:
 
-## Step 2 — One-time Apple notarization setup
+- [x] Repo is public: `github.com/petemcpherson/peteshots`. MIT license, README.
+- [x] Developer ID Application certificate in keychain: `Developer ID Application: Peter McPherson (A2T9Q78M27)`, expires 2031-02-16.
+- [x] Hardened Runtime on, App Sandbox off (fine for Developer ID distribution).
+- [x] Target is named `Peteshots`, so the built app is `Peteshots.app`.
+- [x] Version `1.0.0`, build `1` set in the project (the release script overrides them anyway).
+- [x] App icon has real artwork.
+- [x] Homebrew 7 installed.
 
-Notarization needs credentials stored in your keychain. Pick one option.
+To do before the first release:
 
-**Option A — App-specific password (simplest)**
+- [x] Notary profile: the release script uses `petekm-notary` (PeteKM's, already in the keychain). One profile per developer is enough.
+- [x] `scripts/release.sh` created.
+- [x] `Casks/peteshots.rb` created.
+- [x] README install commands use the tap URL form above.
+- [x] 1.0.0 (build 1) built, notarized (Accepted), stapled. Gatekeeper: `source=Notarized Developer ID`. Universal (`x86_64 arm64`).
+- [ ] Publish 1.0.0: tag, GitHub Release, push cask, verify with brew (Step 4.5 onward).
 
-1. Go to [account.apple.com](https://account.apple.com) → Sign-In and Security → App-Specific Passwords. Create one named `notarytool`.
-2. Run this once, then paste the password when asked:
+Decided and not changing:
+
+- Team ID `A2T9Q78M27` is already committed in `project.pbxproj` and the repo is public, so the guide's `Config/Local.xcconfig` trick (keeping the Team ID out of git) adds nothing here. A Team ID is not a secret. Skip it.
+- Minimum macOS is `26.2` (Tahoe). The cask uses `depends_on macos: ">= :tahoe"`. Homebrew cannot require a point release.
+
+---
+
+## Step 1 — Notary credential (once per Mac)
+
+The release script defaults to `petekm-notary`, which already exists on this Mac. Do this step only on a new Mac, or if that profile gets revoked. One profile per developer is enough. To create one:
+
+1. Create an app-specific password at [account.apple.com](https://account.apple.com) → Sign-In and Security → App-Specific Passwords.
+2. Store it:
 
    ```sh
-   xcrun notarytool store-credentials "peteshots-notary" \
+   xcrun notarytool store-credentials petekm-notary \
      --apple-id "pnm326@gmail.com" \
-     --team-id "A2T9Q78M27"
+     --team-id "A2T9Q78M27" \
+     --password "<app-specific password>"
+
+   xcrun notarytool history --keychain-profile petekm-notary   # must not error
    ```
 
-**Option B — App Store Connect API key (needed later for CI, Step 9)**
+To use a different profile name, run the script with `NOTARY_PROFILE=<name>`.
 
-1. App Store Connect → Users and Access → Integrations → App Store Connect API → generate a key with **Developer** access. Download the `.p8` file (one download only).
-2. Run once:
+Changing the Apple ID password revokes app-specific passwords. Redo this step if that happens.
 
-   ```sh
-   xcrun notarytool store-credentials "peteshots-notary" \
-     --key ~/path/AuthKey_XXXXXX.p8 --key-id XXXXXX --issuer <issuer-uuid>
-   ```
+## Step 2 — Release script (once)
 
-Both options store a keychain profile named `peteshots-notary`. The release script uses that name.
+`scripts/release.sh` (run `chmod +x`). It archives, exports with Developer ID, builds a DMG with an `Applications` shortcut, signs the DMG, notarizes, and staples. It stamps version and build at build time, so you never edit them in Xcode.
 
-## Step 3 — Add a release script to this repo
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
 
-Create `scripts/release.sh` (Claude can write this). It must do the following, in order:
+APP="Peteshots"
+VERSION="${1:?usage: release.sh <marketing-version> <build-number>}"
+BUILD="${2:?usage: release.sh <marketing-version> <build-number>}"
+TEAM="${DEVELOPMENT_TEAM:-A2T9Q78M27}"
+PROFILE="${NOTARY_PROFILE:-petekm-notary}"
 
-1. Read the version from the project (`MARKETING_VERSION`).
-2. Archive a Release build:
-   `xcodebuild -project peteshots.xcodeproj -scheme peteshots -configuration Release -archivePath build/Peteshots.xcarchive archive`
-3. Export with Developer ID signing, using an `scripts/ExportOptions.plist` with `method = developer-id`, `teamID = A2T9Q78M27`, `signingStyle = automatic`:
-   `xcodebuild -exportArchive -archivePath build/Peteshots.xcarchive -exportPath build/export -exportOptionsPlist scripts/ExportOptions.plist`
-4. Verify the signature: `codesign --verify --deep --strict --verbose=2 build/export/Peteshots.app`
-5. Zip the app and notarize it, then staple the ticket to the `.app`:
-   `xcrun notarytool submit <zip> --keychain-profile peteshots-notary --wait`
-   `xcrun stapler staple build/export/Peteshots.app`
-6. Build the DMG with the app plus an `Applications` shortcut (`hdiutil create -volname Peteshots -srcfolder <staging> -format UDZO dist/Peteshots-<version>.dmg`). A styled background like Vorssaint's is optional.
-7. Sign, notarize, and staple the DMG:
-   `codesign --sign "Developer ID Application: Peter McPherson (A2T9Q78M27)" dist/Peteshots-<version>.dmg`
-   `xcrun notarytool submit dist/Peteshots-<version>.dmg --keychain-profile peteshots-notary --wait`
-   `xcrun stapler staple dist/Peteshots-<version>.dmg`
-8. Check Gatekeeper accepts it: `spctl -a -vvv -t install dist/Peteshots-<version>.dmg` (expect `accepted` and `source=Notarized Developer ID`).
-9. Print the SHA-256 for the cask: `shasum -a 256 dist/Peteshots-<version>.dmg`
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+OUT="$ROOT/build"
+ARCHIVE="$OUT/$APP.xcarchive"
+EXPORT_DIR="$OUT/export"
+STAGING="$OUT/dmg"
+DMG="$OUT/$APP-$VERSION.dmg"
 
-Add `build/` and `dist/` to `.gitignore`.
+rm -rf "$OUT"
+mkdir -p "$OUT" "$EXPORT_DIR" "$STAGING"
 
-If notarization fails, see the log:
-`xcrun notarytool log <submission-id> --keychain-profile peteshots-notary`
+cat > "$OUT/ExportOptions.plist" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>method</key><string>developer-id</string>
+    <key>teamID</key><string>$TEAM</string>
+    <key>signingStyle</key><string>automatic</string>
+</dict>
+</plist>
+PLIST
 
-## Step 4 — Test the build like a stranger would
+echo "==> Archiving $VERSION ($BUILD)"
+xcodebuild -project "$ROOT/$APP.xcodeproj" -scheme "$APP" -configuration Release \
+    -archivePath "$ARCHIVE" \
+    MARKETING_VERSION="$VERSION" CURRENT_PROJECT_VERSION="$BUILD" \
+    DEVELOPMENT_TEAM="$TEAM" \
+    archive
 
-1. Copy the DMG to another Mac, or a new user account. AirDrop or a download both set the quarantine flag, which is the real test.
-2. Open the DMG, drag Peteshots to Applications, launch it.
-3. Expected: no "unidentified developer" warning, only the normal "downloaded from the internet" prompt.
-4. Do a capture and save, and check launch at login. Use the Phase 8 checklist in `context/user-todo.md`.
+echo "==> Exporting with Developer ID"
+xcodebuild -exportArchive -archivePath "$ARCHIVE" \
+    -exportOptionsPlist "$OUT/ExportOptions.plist" \
+    -exportPath "$EXPORT_DIR"
 
-## Step 5 — Publish the GitHub Release
+codesign --verify --deep --strict --verbose=2 "$EXPORT_DIR/$APP.app"
+echo "==> Architectures: $(lipo -archs "$EXPORT_DIR/$APP.app/Contents/MacOS/$APP")"
 
-1. Tag the release commit and push:
+echo "==> Building disk image"
+cp -R "$EXPORT_DIR/$APP.app" "$STAGING/"
+ln -s /Applications "$STAGING/Applications"
+hdiutil create -volname "$APP" -srcfolder "$STAGING" -ov -format UDZO "$DMG"
 
-   ```sh
-   git tag v1.0.0
-   git push origin v1.0.0
-   ```
+echo "==> Signing disk image"
+codesign --force --sign "Developer ID Application: Peter McPherson ($TEAM)" --timestamp "$DMG"
 
-2. Create the release and upload the DMG:
+echo "==> Notarizing (this waits for Apple)"
+xcrun notarytool submit "$DMG" --keychain-profile "$PROFILE" --wait
 
-   ```sh
-   gh release create v1.0.0 dist/Peteshots-1.0.0.dmg \
-     --title "Peteshots 1.0.0" --notes "First public release."
-   ```
+echo "==> Stapling"
+xcrun stapler staple "$DMG"
+xcrun stapler validate "$DMG"
 
-3. The download URL is now:
-   `https://github.com/petemcpherson/peteshots/releases/download/v1.0.0/Peteshots-1.0.0.dmg`
-
-Keep this naming pattern (`v<version>` tag, `Peteshots-<version>.dmg` file) on every release. The cask builds the URL from it.
-
-## Step 6 — Create your Homebrew tap
-
-1. Create a new **public** GitHub repo named exactly `homebrew-tap`:
-
-   ```sh
-   gh repo create petemcpherson/homebrew-tap --public \
-     --description "Homebrew tap for Peteshots"
-   ```
-
-   Homebrew maps `petemcpherson/tap` to `github.com/petemcpherson/homebrew-tap`. The `homebrew-` prefix is required.
-
-2. In that repo, add `Casks/peteshots.rb`:
-
-   ```ruby
-   cask "peteshots" do
-     version "1.0.0"
-     sha256 "<sha256 from Step 3>"
-
-     url "https://github.com/petemcpherson/peteshots/releases/download/v#{version}/Peteshots-#{version}.dmg"
-     name "Peteshots"
-     desc "Menu bar screenshot tool with arrows, blur, text and crop"
-     homepage "https://github.com/petemcpherson/peteshots"
-
-     livecheck do
-       url :url
-       strategy :github_latest
-     end
-
-     depends_on macos: ">= :tahoe"
-
-     app "Peteshots.app"
-
-     uninstall quit:       "com.peteshots.peteshots",
-               login_item: "Peteshots"
-
-     zap trash: [
-       "~/Library/Preferences/com.peteshots.peteshots.plist",
-       "~/Library/Saved Application State/com.peteshots.peteshots.savedState",
-     ]
-   end
-   ```
-
-   Notes:
-   - `depends_on macos:` must match Step 1.3. `:tahoe` is macOS 26. Homebrew cannot require a point release such as 26.2.
-   - No `auto_updates true`, because Peteshots has no updater. That way `brew upgrade` updates it.
-   - No `depends_on arch:`, because Release archives are Universal by default (Intel + Apple Silicon). Confirm with `lipo -archs Peteshots.app/Contents/MacOS/Peteshots`. If it prints only `arm64`, add `depends_on arch: :arm64`.
-   - `zap` lists files that `brew uninstall --zap` deletes. Before the first release, find the real files with `ls ~/Library/*/ | grep -i peteshots` and add any extras, such as a Caches folder.
-
-3. Lint and test locally:
-
-   ```sh
-   brew tap petemcpherson/tap
-   brew audit --cask --strict --online petemcpherson/tap/peteshots
-   brew style petemcpherson/tap/peteshots
-   brew install --cask petemcpherson/tap/peteshots
-   brew uninstall --cask petemcpherson/tap/peteshots
-   ```
-
-4. Commit and push the cask.
-
-Users can now install with either:
-
-```sh
-brew install --cask petemcpherson/tap/peteshots
-# or
-brew tap petemcpherson/tap
-brew install --cask peteshots
+echo "==> Done: $DMG"
+shasum -a 256 "$DMG"
 ```
 
-## Step 7 — Update the README
+`build/` is already in `.gitignore`. The script writes `ExportOptions.plist` into `build/` at run time, so nothing else needs committing.
 
-Put a user-facing **Install** section above the "Build" section, like Vorssaint's:
+Notarizing the DMG covers the app inside it. A separate zip-and-notarize of the `.app` is not needed.
 
-````md
-## Install
+## Step 3 — Cask (once)
 
-With [Homebrew](https://brew.sh):
+`Casks/peteshots.rb`:
 
-```sh
-brew install --cask petemcpherson/tap/peteshots
+```ruby
+cask "peteshots" do
+  version "1.0.0"
+  sha256 "REPLACE_WITH_SHA256_OF_RELEASE_DMG"
+
+  url "https://github.com/petemcpherson/peteshots/releases/download/v#{version}/Peteshots-#{version}.dmg"
+  name "Peteshots"
+  desc "Menu bar screenshot tool with arrows, blur, text and crop"
+  homepage "https://github.com/petemcpherson/peteshots"
+
+  livecheck do
+    url :url
+    strategy :github_latest
+  end
+
+  depends_on macos: ">= :tahoe"
+
+  app "Peteshots.app"
+
+  uninstall quit:       "com.peteshots.peteshots",
+            login_item: "Peteshots"
+
+  zap trash: [
+    "~/Library/Application Scripts/com.peteshots.peteshots",
+    "~/Library/Containers/com.peteshots.peteshots",
+    "~/Library/Preferences/com.peteshots.peteshots.plist",
+    "~/Library/Saved Application State/com.peteshots.peteshots.savedState",
+  ]
+end
 ```
 
-Or download the DMG from the [releases page](https://github.com/petemcpherson/peteshots/releases) and drag Peteshots into Applications.
+Notes:
 
-Builds are signed with an Apple Developer ID and notarized.
+- No `auto_updates true`. Peteshots has no in-app updater, so plain `brew upgrade` updates it.
+- No `depends_on arch:` if the script prints `x86_64 arm64`. If it prints only `arm64`, add `depends_on arch: :arm64`.
+- `zap` runs only on `brew uninstall --zap`. The `Application Scripts` and `Containers` folders are left over from early sandboxed dev builds. Listing them is harmless.
+- Bundle ID `com.peteshots.peteshots` never changes. Users would lose their Screen Recording permission and settings.
 
-## Uninstall
+## Step 4 — Every release (including the first)
+
+### 4.1 Numbers
+
+- **Version** (shown to users): semver. Fixes `1.0.0` → `1.0.1`, features → `1.1.0`.
+- **Build**: previous + 1. Never repeats, never decreases. See the release log at the bottom.
 
 ```sh
-brew uninstall --cask peteshots          # app only
-brew uninstall --zap --cask peteshots    # app + settings
+V=1.0.0
+B=1
 ```
-````
 
-Also:
+### 4.2 Gate
 
-- Keep the build-from-source steps under a "Build it yourself" heading.
-- Add a screenshot or GIF near the top. It sells the app more than text.
-- Optional badges: latest release, downloads, macOS version.
-- Add a `CHANGELOG.md` and update it each release.
+Quit any running copy of Peteshots first. UI tests that launch the app can hang if it is already running.
 
-## Step 8 — Checklist for every new release
+```sh
+git status                                                   # clean, on main, pushed
+xcodebuild -project Peteshots.xcodeproj -scheme Peteshots test   # green
+```
 
-1. Raise **Version** and **Build** in Xcode. Add a `CHANGELOG.md` entry. Commit to `main`.
-2. Run `scripts/release.sh`. Note the SHA-256.
-3. `git tag vX.Y.Z && git push origin vX.Y.Z`
-4. `gh release create vX.Y.Z dist/Peteshots-X.Y.Z.dmg --title "Peteshots X.Y.Z" --notes-file <notes>`
-5. In `homebrew-tap`, update `version` and `sha256` in `Casks/peteshots.rb`, then commit and push.
-6. Check: `brew update && brew upgrade --cask peteshots`
+### 4.3 Build, sign, notarize
 
-## Step 9 — Optional: automate with GitHub Actions
+```sh
+scripts/release.sh "$V" "$B"
+spctl -a -t open --context context:primary-signature -v "build/Peteshots-$V.dmg"   # "accepted"
+```
 
-Vorssaint runs Steps 2–5 on GitHub Actions whenever a `v*` tag is pushed. Do this only after the manual flow works.
+If notarization fails: `xcrun notarytool log <submission-id> --keychain-profile petekm-notary`.
 
-1. Export the Developer ID certificate and its private key from Keychain Access as a `.p12` file with a password.
-2. Add these repo secrets (Settings → Secrets and variables → Actions):
-   - `SIGNING_CERT_P12` — `base64 -i cert.p12 | pbcopy`
-   - `SIGNING_CERT_PASSWORD`
-   - `NOTARY_API_KEY_P8` — base64 of the `.p8` from Step 2 Option B
-   - `NOTARY_KEY_ID`, `NOTARY_ISSUER_ID`
-3. Add `.github/workflows/release.yml`. On a `v*` tag it runs on `macos-26`, imports the certificate into a temporary keychain, runs `scripts/release.sh`, and uploads the DMG with `gh release create`. Vorssaint's `Tools/ci-setup-signing.sh` and `Tools/notarize.sh` are good templates.
-4. Add a final job that updates the cask automatically. It needs a fine-grained token with write access to `homebrew-tap`, stored as secret `TAP_GITHUB_TOKEN`. The job edits `version` and `sha256` and pushes. Then a release is only: bump version, commit, push tag.
-5. Security: put signing secrets in a protected GitHub **Environment** that needs your approval. Run the workflow only for tags you push. Vorssaint's workflow shows both.
+### 4.4 Test like a stranger (first release, or after big changes)
 
-## Step 10 — Later: move to the official Homebrew repo
+Copy the DMG to another Mac or a new user account (AirDrop or a download sets the quarantine flag, which is the real test). Open it, drag Peteshots to Applications, launch. Expect no "unidentified developer" warning. Do a capture and save, and check launch at login. Use the Phase 8 checklist in `context/user-todo.md`.
 
-When Peteshots is popular enough, submit it to `Homebrew/homebrew-cask`. Users can then run `brew install --cask peteshots` with no tap.
+### 4.5 GitHub Release
 
-1. Read Homebrew's "Acceptable Casks" docs for the current popularity rules. Rules are stricter when the author submits their own app (a few hundred stars at the time of writing).
-2. Fork `Homebrew/homebrew-cask` and add the same cask at `Casks/p/peteshots.rb`.
-3. Run `brew audit --new --cask peteshots` and `brew style --fix`, then open a PR.
-4. After the merge, Homebrew's autobump bot usually picks up new GitHub releases on its own.
-5. Update the README install command. In the tap, keep the cask for a while or replace it with a note that points to the official cask.
+```sh
+git tag "v$V" && git push origin "v$V"
+gh release create "v$V" "build/Peteshots-$V.dmg" --title "Peteshots $V" --notes "What changed."
+```
+
+The tag **must** be `v<version>` and the asset **must** be `Peteshots-<version>.dmg`, or the cask URL 404s.
+
+### 4.6 Update the cask
+
+Set `version` and `sha256` (printed by the script, or `shasum -a 256 "build/Peteshots-$V.dmg"`) in `Casks/peteshots.rb`. Commit and push to `main`. From that moment, `brew upgrade` delivers the release. Add a row to the release log below.
+
+### 4.7 Verify
+
+First release (fresh install):
+
+```sh
+brew untap petemcpherson/peteshots 2>/dev/null
+brew tap petemcpherson/peteshots https://github.com/petemcpherson/peteshots
+brew install --cask petemcpherson/peteshots/peteshots
+brew audit --cask --strict petemcpherson/peteshots/peteshots
+open -a Peteshots                                           # no Gatekeeper warning
+```
+
+Later releases (with the previous version installed):
+
+```sh
+brew update && brew upgrade --cask peteshots
+```
+
+---
+
+## README install section
+
+Use the long form. Two reasons:
+
+- **The tap needs the URL**, because the repo is not named `homebrew-<something>`. The tap name `petemcpherson/peteshots` is arbitrary but must be used everywhere.
+- **The install needs the fully qualified name.** Homebrew 7 refuses casks from untrusted third-party taps. `brew install --cask peteshots` alone fails with `Refusing to load cask … from untrusted tap`. Installing by `petemcpherson/peteshots/peteshots` trusts it automatically.
+
+`brew upgrade --cask peteshots` and `brew uninstall --cask peteshots` work with the short name once installed.
+
+---
+
+## Gotchas
+
+| Symptom | Cause / fix |
+| --- | --- |
+| `No Keychain password item found for profile` | Notary profile missing on this Mac, or revoked by an Apple ID password change. Redo Step 1. |
+| Archive/export signing error | Developer ID cert missing or expired. Check `security find-identity -v -p codesigning`. |
+| Notarization "Invalid" | Read the log (`xcrun notarytool log …`). Usually hardened runtime off or an unsigned nested binary. |
+| Notarization rejected for agreements | Membership lapsed, or a new agreement needs accepting at developer.apple.com. |
+| `brew install` SHA mismatch | `sha256` came from a different DMG than the uploaded one. Recompute from the Release asset. |
+| `brew install` 404 | Tag isn't `v<version>` or DMG name doesn't match the cask URL. |
+| `Refusing to load cask … from untrusted tap` | Install by the fully qualified name. |
+| `brew upgrade` doesn't see the release | Cask commit not pushed to `main`, or run `brew update`. |
+| Gatekeeper warning on first launch | DMG not notarized or not stapled. Check `xcrun stapler validate`. |
+| UI tests hang ~60 s at start | A copy of Peteshots is already running. Quit it. |
+
+---
+
+## Later (optional)
+
+- **Automate 4.5–4.6** in `release.sh`: `gh release create`, then rewrite `version`/`sha256` in the cask with `sed`, then commit.
+- **GitHub Actions.** Run the release on a pushed `v*` tag. Needs the Developer ID `.p12` and an App Store Connect API key (`.p8`) as repo secrets, in a protected Environment that needs your approval. Do this only after the manual flow works a few times.
+- **Sparkle** for in-app updates. See the guide. If added, put `auto_updates true` in the cask.
+- **Official `homebrew/cask`.** Once Peteshots has real traction (a few hundred stars for a self-submitted app), PR the cask to `Homebrew/homebrew-cask` at `Casks/p/peteshots.rb` so users can run `brew install --cask peteshots`. Then delete `Casks/` here and update the README.
 
 ---
 
@@ -264,11 +295,19 @@ When Peteshots is popular enough, submit it to `Homebrew/homebrew-cask`. Users c
 
 | Thing | Value |
 |---|---|
+| Project / scheme | `Peteshots.xcodeproj` / `Peteshots` |
 | Bundle ID | `com.peteshots.peteshots` (never change) |
 | Team ID | `A2T9Q78M27` |
 | Signing identity | `Developer ID Application: Peter McPherson (A2T9Q78M27)` |
-| Notary profile | `peteshots-notary` |
+| Notary profile | `petekm-notary` (shared with PeteKM) |
 | Tag format | `v1.0.0` |
 | Asset name | `Peteshots-1.0.0.dmg` |
-| Tap repo | `github.com/petemcpherson/homebrew-tap` |
-| Install command | `brew install --cask petemcpherson/tap/peteshots` |
+| Cask | `Casks/peteshots.rb` in this repo |
+| Tap | `brew tap petemcpherson/peteshots https://github.com/petemcpherson/peteshots` |
+| Install | `brew install --cask petemcpherson/peteshots/peteshots` |
+
+## Release log
+
+| Version | Build | Date | Notes |
+|---|---|---|---|
+| 1.0.0 | 1 | 2026-10-11 | First public release. |
