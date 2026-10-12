@@ -278,6 +278,7 @@ Use the long form. Two reasons:
 | `Refusing to load cask … from untrusted tap` | Install by the fully qualified name. |
 | `brew upgrade` doesn't see the release | Cask commit not pushed to `main`, or run `brew update`. |
 | Gatekeeper warning on first launch | DMG not notarized or not stapled. Check `xcrun stapler validate`. |
+| Screen Recording prompt keeps coming back, though Peteshots is enabled in Settings | The Settings entry belongs to an old dev build (Apple Development signature). macOS matches the entry by signature, so the Developer ID build needs its own. Quit Peteshots, run `tccutil reset ScreenCapture com.peteshots.peteshots`, launch, grant, then quit and relaunch. Only affects this dev Mac. Real users never had a dev build, and later Developer ID releases keep the permission. |
 | UI tests hang ~60 s at start | A copy of Peteshots is already running. Quit it. |
 
 ---
