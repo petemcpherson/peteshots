@@ -47,7 +47,7 @@ To do before the first release:
 Decided and not changing:
 
 - Team ID `A2T9Q78M27` is already committed in `project.pbxproj` and the repo is public, so the guide's `Config/Local.xcconfig` trick (keeping the Team ID out of git) adds nothing here. A Team ID is not a secret. Skip it.
-- Minimum macOS is `26.2` (Tahoe). The cask uses `depends_on macos: ">= :tahoe"`. Homebrew cannot require a point release.
+- Minimum macOS is `26.2` (Tahoe). The cask uses `depends_on macos: :tahoe` (Homebrew 7 style; it means Tahoe or newer). Homebrew cannot require a point release.
 
 ---
 
@@ -164,7 +164,7 @@ cask "peteshots" do
     strategy :github_latest
   end
 
-  depends_on macos: ">= :tahoe"
+  depends_on macos: :tahoe
 
   app "Peteshots.app"
 
