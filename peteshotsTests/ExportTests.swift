@@ -220,6 +220,19 @@ struct RendererTests {
         #expect(roundedCorner.r < 200)
     }
 
+    @Test func arrowDrawsOverBackground() throws {
+        let base = ExportTestImages.solid(width: 200, height: 100)
+        var document = EditorDocument(imageSize: CGSize(width: 200, height: 100))
+        // 20 px padding: image x = -15 is output x = 5, in the padding.
+        document.background = Background(gradient: .midnight, padding: 0.1)
+        let arrow = ArrowAnnotation(start: CGPoint(x: -15, y: 50), end: CGPoint(x: 60, y: 50), colorHex: "#FF0000", strokeWidth: 6)
+        document.annotations = [.arrow(arrow)]
+        let output = try #require(Renderer.flatten(base: base, document: document))
+
+        let inPadding = ExportTestImages.pixel(output, x: 8, y: 70)
+        #expect(inPadding.r > 240 && inPadding.g < 20 && inPadding.b < 20)
+    }
+
     @Test func backgroundPaddingFollowsCrop() {
         let base = ExportTestImages.solid(width: 200, height: 100)
         var document = EditorDocument(imageSize: CGSize(width: 200, height: 100))

@@ -35,13 +35,26 @@ struct EditorStateTests {
         #expect(state.tool == .select)
     }
 
-    @Test func placeSelectsAndSwitchesToSelect() {
+    @Test(arguments: [Tool.arrow, .blur])
+    func placeKeepsTool(_ tool: Tool) {
         let (state, undoManager) = makeState()
-        state.tool = .blur
-        let annotation = blur(CGRect(x: 1, y: 1, width: 10, height: 10))
+        state.tool = tool
+        let annotation: Annotation = tool == .arrow
+            ? .arrow(ArrowAnnotation(start: CGPoint(x: 1, y: 1), end: CGPoint(x: 10, y: 10), colorHex: "#FF0000", strokeWidth: 2))
+            : blur(CGRect(x: 1, y: 1, width: 10, height: 10))
         step(undoManager) { state.place(annotation) }
-        #expect(state.tool == .select)
-        #expect(state.selectedID == annotation.id)
+        #expect(state.tool == tool)
+        #expect(state.selectedID == nil)
+        #expect(state.document.annotations == [annotation])
+    }
+
+    @Test func canvasBoundsIncludeBackgroundPadding() {
+        let (state, undoManager) = makeState()
+        #expect(state.canvasBounds == state.document.cropRect)
+        step(undoManager) { state.setBackground(.sunset) }
+        let crop = state.document.cropRect
+        #expect(state.canvasBounds == state.document.background?.canvasRect(for: crop))
+        #expect(state.canvasBounds.contains(crop))
     }
 
     @Test func backgroundIsOneUndoStep() {
@@ -129,6 +142,7 @@ struct EditorStateTests {
         let (state, undoManager) = makeState()
         let annotation = blur(CGRect(x: 0, y: 0, width: 10, height: 10))
         step(undoManager) { state.place(annotation) }
+        state.selectedID = annotation.id
         step(undoManager) { state.deleteSelection() }
         #expect(state.document.annotations.isEmpty)
         #expect(state.selectedID == nil)
@@ -165,6 +179,7 @@ struct EditorStateTests {
             let (state, undoManager) = makeState()
             let annotation = arrow()
             step(undoManager) { state.place(annotation) }
+            state.selectedID = annotation.id
 
             // Continuous panel updates coalesce into one step.
             step(undoManager) { state.setColor("#00FF00") }
@@ -197,6 +212,7 @@ struct EditorStateTests {
             let (state, undoManager) = makeState()
             let annotation = blur(CGRect(x: 0, y: 0, width: 10, height: 10))
             step(undoManager) { state.place(annotation) }
+            state.selectedID = annotation.id
             state.setColor("#123456")
             #expect(state.document.annotations == [annotation])
             undoManager.undo()
@@ -210,6 +226,7 @@ struct EditorStateTests {
             state.setArrowWeight(.regular)
             let annotation = arrow()
             step(undoManager) { state.place(annotation) }
+            state.selectedID = annotation.id
 
             step(undoManager) { state.setArrowWeight(.heavy) }
             #expect(state.arrowStrokeWidth == state.baseArrowStrokeWidth * 2)
@@ -228,6 +245,7 @@ struct EditorStateTests {
             state.setOutlineColor("#FFFFFF")
             let annotation = arrow()
             step(undoManager) { state.place(annotation) }
+            state.selectedID = annotation.id
 
             step(undoManager) { state.setOutlineWidth(.thick) }
             step(undoManager) { state.setOutlineColor("#000000") }
@@ -249,6 +267,7 @@ struct EditorStateTests {
             let (state, undoManager) = makeState()
             let annotation = blur(CGRect(x: 0, y: 0, width: 10, height: 10))
             step(undoManager) { state.place(annotation) }
+            state.selectedID = annotation.id
             state.setOutlineWidth(.thin)
             state.setArrowWeight(.bold)
             #expect(state.document.annotations == [annotation])

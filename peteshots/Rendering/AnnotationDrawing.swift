@@ -11,9 +11,19 @@ nonisolated enum AnnotationDrawing {
     /// Draws all annotations: blurs first, then arrows and text, each in
     /// creation order (spec §5.8).
     static func draw(_ annotations: [Annotation], base: CGImage, in context: CGContext) {
+        drawBlurs(annotations, base: base, in: context)
+        drawMarks(annotations, in: context)
+    }
+
+    /// Blurs are part of the screenshot, so they stay inside its clip.
+    static func drawBlurs(_ annotations: [Annotation], base: CGImage, in context: CGContext) {
         for case .blur(let blur) in annotations {
             drawBlur(blur, base: base, in: context)
         }
+    }
+
+    /// Arrows and text, in creation order. They can extend over the background.
+    static func drawMarks(_ annotations: [Annotation], in context: CGContext) {
         for annotation in annotations {
             switch annotation {
             case .arrow(let arrow): drawArrow(arrow, in: context)

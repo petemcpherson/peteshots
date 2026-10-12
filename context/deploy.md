@@ -186,6 +186,7 @@ Notes:
 - No `depends_on arch:` if the script prints `x86_64 arm64`. If it prints only `arm64`, add `depends_on arch: :arm64`.
 - `zap` runs only on `brew uninstall --zap`. The `Application Scripts` and `Containers` folders are left over from early sandboxed dev builds. Listing them is harmless.
 - Bundle ID `com.peteshots.peteshots` never changes. Users would lose their Screen Recording permission and settings.
+- Debug builds (run from Xcode) use `com.peteshots.peteshots.dev` and show as "Peteshots Dev". They get their own Screen Recording permission and settings, so the Homebrew install and the dev build never invalidate each other. Quit the Homebrew app before running from Xcode, so only one app registers the hotkey.
 
 ## Step 4 — Every release (including the first)
 

@@ -146,6 +146,13 @@ final class EditorState {
         CGRect(x: 0, y: 0, width: baseImage.width, height: baseImage.height)
     }
 
+    /// The output area in image px: the crop plus any background padding.
+    /// Arrows and text can go anywhere in it (spec §5.6b).
+    var canvasBounds: CGRect {
+        let crop = document.cropRect.standardized
+        return document.background?.canvasRect(for: crop) ?? crop
+    }
+
     var selectedAnnotation: Annotation? {
         selectedID.flatMap { document.annotation(withID: $0) }
     }
@@ -196,11 +203,10 @@ final class EditorState {
         registerUndo(restoring: start)
     }
 
-    /// Adds a new annotation, then selects it with the Select tool (spec §5.2).
+    /// Adds a new annotation. The Arrow and Blur tools stay active, so several
+    /// can be drawn in a row (spec §5.2).
     func place(_ annotation: Annotation) {
         commit { $0.annotations.append(annotation) }
-        tool = .select
-        selectedID = annotation.id
     }
 
     func deleteSelection() {

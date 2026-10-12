@@ -23,8 +23,9 @@ nonisolated enum Renderer {
     }
 
     /// The crop area of `base` with every annotation drawn on it, through the
-    /// same drawing code as the canvas. Annotations outside the crop are clipped.
-    /// With a background, the output adds its padding on each side (spec §5.6b).
+    /// same drawing code as the canvas. Annotations outside the output are clipped.
+    /// With a background, the output adds its padding on each side, and arrows
+    /// and text can extend over it (spec §5.6b).
     static func flatten(base: CGImage, document: EditorDocument) -> CGImage? {
         let crop = document.cropRect.standardized
         let output = document.background?.canvasRect(for: crop) ?? crop
@@ -36,17 +37,19 @@ nonisolated enum Renderer {
         context.translateBy(x: -output.minX, y: -output.minY)
         if let background = document.background {
             BackgroundDrawing.draw(background, crop: crop, in: context) {
-                drawContent(base: base, annotations: document.annotations, in: context)
+                drawScreenshot(base: base, annotations: document.annotations, in: context)
             }
         } else {
             context.clip(to: crop)
-            drawContent(base: base, annotations: document.annotations, in: context)
+            drawScreenshot(base: base, annotations: document.annotations, in: context)
         }
+        // Over the background too, not clipped to the screenshot.
+        AnnotationDrawing.drawMarks(document.annotations, in: context)
         return context.makeImage()
     }
 
-    /// The base image and annotations, in image pixels.
-    private static func drawContent(base: CGImage, annotations: [Annotation], in context: CGContext) {
+    /// The base image and its blurs, in image pixels.
+    private static func drawScreenshot(base: CGImage, annotations: [Annotation], in context: CGContext) {
         let imageHeight = CGFloat(base.height)
         context.saveGState()
         // CGContext.draw expects a bottom-left origin; flip locally so the image is upright.
@@ -55,6 +58,6 @@ nonisolated enum Renderer {
         context.draw(base, in: CGRect(x: 0, y: 0, width: CGFloat(base.width), height: imageHeight))
         context.restoreGState()
 
-        AnnotationDrawing.draw(annotations, base: base, in: context)
+        AnnotationDrawing.drawBlurs(annotations, base: base, in: context)
     }
 }

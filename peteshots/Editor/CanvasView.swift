@@ -173,11 +173,13 @@ final class CanvasView: NSView {
         context.interpolationQuality = .high
         if state.tool != .crop, let background = state.document.background {
             BackgroundDrawing.draw(background, crop: state.document.cropRect, in: context) {
-                drawContent(in: context)
+                drawScreenshot(in: context)
             }
         } else {
-            drawContent(in: context)
+            drawScreenshot(in: context)
         }
+        // Over the background too, not clipped to the screenshot.
+        drawMarks(in: context)
         context.restoreGState()
 
         if case .blur(let blur)? = draft {
@@ -203,18 +205,24 @@ final class CanvasView: NSView {
         drawHandles(at: Geometry.RectHandle.allCases.map { $0.point(in: crop) })
     }
 
-    /// The base image, annotations, and draft, in image pixels.
-    private func drawContent(in context: CGContext) {
+    /// The base image, blurs, and a blur draft, in image pixels.
+    private func drawScreenshot(in context: CGContext) {
         drawBaseImage(in: context)
+        let annotations = state.document.annotations + (draft.map { [$0] } ?? [])
+        AnnotationDrawing.drawBlurs(annotations, base: state.baseImage, in: context)
+    }
+
+    /// Arrows, text, and an arrow draft, in image pixels.
+    private func drawMarks(in context: CGContext) {
         // The inline editor draws the text being edited.
         let annotations = state.document.annotations.filter { $0.id != state.editingTextID }
-        AnnotationDrawing.draw(annotations, base: state.baseImage, in: context)
+        AnnotationDrawing.drawMarks(annotations, in: context)
         if let id = state.editingTextID, case .text(let text)? = state.document.annotation(withID: id) {
             // The editor shows the fill; its outline draws here, under it.
             AnnotationDrawing.drawText(text, outlineOnly: true, in: context)
         }
         if let draft {
-            AnnotationDrawing.draw([draft], base: state.baseImage, in: context)
+            AnnotationDrawing.drawMarks([draft], in: context)
         }
     }
 
@@ -280,7 +288,7 @@ final class CanvasView: NSView {
         case .select:
             beginSelectDrag(at: point)
         case .arrow, .blur:
-            drag = .create(tool: state.tool, start: Geometry.clampPoint(point, to: state.imageBounds))
+            drag = .create(tool: state.tool, start: Geometry.clampPoint(point, to: createBounds(for: state.tool)))
         case .text:
             if case .text(let text)? = hitTest(imagePoint: point) {
                 beginTextEditing(text, isNew: false)
@@ -331,7 +339,7 @@ final class CanvasView: NSView {
             }
 
         case .create(let tool, let start):
-            draft = makeDraft(tool: tool, from: start, to: Geometry.clampPoint(point, to: state.imageBounds))
+            draft = makeDraft(tool: tool, from: start, to: Geometry.clampPoint(point, to: createBounds(for: tool)))
 
         case .cropResize(let handle):
             guard let crop = state.cropDraft else { return }
@@ -408,6 +416,11 @@ final class CanvasView: NSView {
         }
     }
 
+    /// Arrows can go over the background. Blurs need image pixels under them.
+    private func createBounds(for tool: Tool) -> CGRect {
+        tool == .arrow ? state.canvasBounds : state.imageBounds
+    }
+
     private func makeDraft(tool: Tool, from start: CGPoint, to end: CGPoint) -> Annotation? {
         switch tool {
         case .arrow:
@@ -448,8 +461,7 @@ final class CanvasView: NSView {
     private func beginTextEditing(newTextAt point: CGPoint) {
         let fontSize = state.defaultFontSize
         let lineHeight = fontSize * TextLayout.lineHeightMultiple
-        // Not the background padding: text there would be clipped.
-        let origin = Geometry.clampPoint(CGPoint(x: point.x, y: point.y - lineHeight / 2), to: state.document.cropRect)
+        let origin = Geometry.clampPoint(CGPoint(x: point.x, y: point.y - lineHeight / 2), to: state.canvasBounds)
         let text = TextAnnotation(origin: origin, string: "", fontSize: fontSize, colorHex: state.colorHex, outline: state.outline)
         beginTextEditing(text, isNew: true)
     }

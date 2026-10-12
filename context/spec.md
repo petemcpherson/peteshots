@@ -154,7 +154,7 @@ A slim top bar, left to right:
 
 `[Select] [Arrow] [Blur] [Text] [Crop]  |  [● color swatch]  ……  [Cancel] [Save]`
 
-- Tools are mutually exclusive. **Select** is the default tool after each annotation is placed. This avoids placing an annotation by accident, and you can move things right after you draw them. Pressing the same tool button again keeps that tool active.
+- Tools are mutually exclusive. After an arrow or blur is placed, its tool stays active, so several can be drawn in a row. Press `V` or click **Select** to move or edit them. Pressing the same tool button again keeps that tool active.
 - Single-key tool shortcuts: `V` select, `A` arrow, `B` blur, `T` text, `C` crop. These keys work only when no text box is being edited.
 - **Cmd-S** or **Save** saves and closes. **Esc**, **Cancel**, or the window close button discards the capture with no confirmation. **Delete/Backspace** removes the selected annotation. Cmd-Z and Cmd-Shift-Z undo and redo (§5.9).
 
@@ -197,7 +197,7 @@ A slim top bar, left to right:
 - A toolbar button opens a popover with **None**, 8 built-in gradients, and a **Padding** slider. There are no custom gradients.
 - Gradients: Sunset, Ocean, Grape, Aurora, Mint, Peach (colorful), Cloud (almost white/gray), and Midnight (almost black). Each is a diagonal linear gradient from the top-left to the bottom-right.
 - Padding on each side is a fraction of the crop's long side: 2–20%, default 8%. The output image is the crop plus the padding on each side.
-- With a background, the screenshot has rounded corners (1.2% of the long side, clamped to 6–24 px) and a soft drop shadow (blur 2% of the long side, clamped to 8–40 px). Annotations are clipped to the screenshot.
+- With a background, the screenshot has rounded corners (1.2% of the long side, clamped to 6–24 px) and a soft drop shadow (blur 2% of the long side, clamped to 8–40 px). Blurs are clipped to the screenshot. Arrows and text draw above the background and can be placed anywhere in the padding.
 - The background is part of the document, so choosing a gradient is one undo step and one slider drag is one undo step. Each capture starts with no background. The padding is saved to `UserDefaults`.
 - In crop mode the canvas hides the background. The button is disabled.
 
